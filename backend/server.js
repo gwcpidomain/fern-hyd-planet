@@ -11,6 +11,7 @@ const {
   validateControlPayload 
 } = require('./middleware/validate');
 const rateLimiter = require('./middleware/rate-limit');
+const { startTuyaPoller } = require('./tuyaService');
 
 const app = express();
 
@@ -863,6 +864,9 @@ if (process.env.SIMULATE_HARDWARE === 'true') {
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🛠️ Starting Edge Backend Hub...`);
   console.log(`🚀 Edge Backend Hub Running on http://localhost:${PORT}`);
+
+  // Start Tuya Cloud AQI poller (only runs when TUYA_* env vars are set)
+  startTuyaPoller(db, broadcast);
 });
 
 // AUDIT FIX (Finding 7.3 — High): Graceful Shutdown Hook
