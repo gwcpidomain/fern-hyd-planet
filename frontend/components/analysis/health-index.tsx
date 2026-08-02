@@ -85,7 +85,7 @@ export function BorewellHealthIndex({
 
     return [
       {
-        label: "Pump & Motor Health",
+        label: "Pump Mechanics",
         score: mechanicalScore,
         icon: <Zap className="h-3 w-3" />,
         color: mechanicalColor,
@@ -93,7 +93,7 @@ export function BorewellHealthIndex({
         status: mechanicalStatus,
       },
       {
-        label: "Aquifer Yield & Flow",
+        label: "Hydrology Flow",
         score: hydrologicalScore,
         icon: <Droplets className="h-3 w-3" />,
         color: hydrologicalColor,
