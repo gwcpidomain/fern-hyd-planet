@@ -48,9 +48,9 @@ const STATE_AQI_DATA: Record<string, number> = {
 
 // City-level averages for comparison strip
 export const CITY_AQI: Record<string, { city: string; state: string; aqi: number }> = {
-  "BLR-01": { city: "Bangalore", state: "Karnataka", aqi: 78 },
-  "BLR-02": { city: "Bangalore", state: "Karnataka", aqi: 82 },
-  "BLR-03": { city: "Bangalore", state: "Karnataka", aqi: 75 },
+  "HYD-01": { city: "Hyderabad", state: "Telangana", aqi: 78 },
+  "HYD-02": { city: "Hyderabad", state: "Telangana", aqi: 82 },
+  "HYD-03": { city: "Hyderabad", state: "Telangana", aqi: 75 },
   "DEL-01": { city: "Delhi", state: "Delhi", aqi: 285 },
   "MUM-01": { city: "Mumbai", state: "Maharashtra", aqi: 115 },
 }

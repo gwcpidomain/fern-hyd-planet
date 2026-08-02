@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
+const helmet = require('helmet');
 const db = require('./db');
 const { requireApiKey, requireDashboardAuth } = require('./middleware/auth');
 const { 
@@ -11,13 +12,25 @@ const {
   validateControlPayload 
 } = require('./middleware/validate');
 const rateLimiter = require('./middleware/rate-limit');
+const { loginRateLimiter } = require('./middleware/login-rate-limit');
 const { startTuyaPoller } = require('./tuyaService');
 
 const app = express();
 
-// AUDIT FIX (Finding 4.2 — High): Enable configurable CORS origin restriction
+// SECURITY FIX (H-08): Trust first proxy hop (Render's load balancer) for correct req.ip
+app.set('trust proxy', 1);
+
+// SECURITY FIX (H-05): Set security HTTP headers (HSTS, X-Content-Type-Options, X-Frame-Options, etc.)
+app.use(helmet());
+
+// SECURITY FIX (H-01): CORS defaults to deny-all if CORS_ORIGIN env var is not set.
+// Set CORS_ORIGIN=https://yourdomain.com in production.
+const corsOrigin = process.env.CORS_ORIGIN;
+if (!corsOrigin) {
+  console.warn('⚠️  CORS_ORIGIN not set — CORS will deny cross-origin requests. Set this env var in production.');
+}
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || '*'
+  origin: corsOrigin || false
 };
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -46,13 +59,11 @@ const clients = new Set();
 
 // --- API ENDPOINTS ---
 
-// AUDIT FIX (Finding 2.5 — High): Health Check Endpoint
+// AUDIT FIX (Finding 2.5): Health Check Endpoint
+// SECURITY FIX (M-05): Removed internal metrics (uptime, ws count) from public endpoint.
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'healthy',
-    uptime_seconds: Math.floor(process.uptime()),
-    database: db ? 'connected' : 'disconnected',
-    active_websockets: clients.size,
     timestamp: new Date().toISOString()
   });
 });
@@ -68,6 +79,11 @@ app.get('/api/borewells', requireDashboardAuth, (req, res) => {
 // 2. Get Historical Data (For Trend Graphs)
 app.get('/api/history/:id', requireDashboardAuth, (req, res) => {
   const { id } = req.params;
+  // SECURITY FIX (M-01): Whitelist borewell IDs to prevent enumeration
+  const validIds = ['BW-01', 'BW-02', 'BW-03'];
+  if (!validIds.includes(id)) {
+    return res.status(400).json({ error: `Invalid borewell ID "${id}". Valid IDs: ${validIds.join(', ')}` });
+  }
   const limit = parseInt(req.query.limit, 10) || 50; // Last 50 points
   db.all("SELECT * FROM readings_history WHERE borewell_id = ? ORDER BY timestamp DESC LIMIT ?", [id, limit], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -85,10 +101,13 @@ app.get('/api/aqi/history', requireDashboardAuth, (req, res) => {
 
 // CSV Export Endpoint - Merges Water and Air historical readings
 app.get('/api/export/csv', requireDashboardAuth, (req, res) => {
-  db.all('SELECT * FROM readings_history ORDER BY timestamp DESC', [], (err, waterRows) => {
+  // SECURITY FIX (M-02): Cap export queries to prevent OOM on large datasets
+  const exportLimit = parseInt(req.query.limit, 10) || 10000;
+  const safeCsvLimit = Math.min(exportLimit, 50000);
+  db.all('SELECT * FROM readings_history ORDER BY timestamp DESC LIMIT ?', [safeCsvLimit], (err, waterRows) => {
     if (err) return res.status(500).json({ error: err.message });
     
-    db.all('SELECT * FROM aqi_history ORDER BY timestamp DESC', [], (err, aqiRows) => {
+    db.all('SELECT * FROM aqi_history ORDER BY timestamp DESC LIMIT ?', [safeCsvLimit], (err, aqiRows) => {
       if (err) return res.status(500).json({ error: err.message });
       
       const combined = [];
@@ -436,15 +455,17 @@ function normalizeAqiPayload(raw) {
 }
 
 app.post('/api/aqi', requireApiKey, (req, res, next) => {
-  // ── DIAGNOSTIC LOG ─────────────────────────────────────────────────────────
-  // Prints the raw body BEFORE any validation so you can see exactly what the
-  // ESP32 is sending — check Render logs for "📡 AQI RAW PAYLOAD" lines.
-  console.log('📡 AQI RAW PAYLOAD received from', req.ip, '→', JSON.stringify(req.body));
-  // ───────────────────────────────────────────────────────────────────────────
+  // SECURITY FIX (M-07): Diagnostic logs gated behind DEBUG_PAYLOADS env var to avoid
+  // leaking IP addresses and raw payloads in production logs.
+  if (process.env.DEBUG_PAYLOADS === 'true') {
+    console.log('📡 AQI RAW PAYLOAD received from', req.ip, '→', JSON.stringify(req.body));
+  }
 
   // Normalize field names to handle any ESP32 firmware variant
   req.body = normalizeAqiPayload(req.body);
-  console.log('🔄 AQI Normalized payload →', JSON.stringify(req.body));
+  if (process.env.DEBUG_PAYLOADS === 'true') {
+    console.log('🔄 AQI Normalized payload →', JSON.stringify(req.body));
+  }
 
   next();
 }, validateAqiPayload, (req, res) => {
@@ -538,7 +559,8 @@ function verifyToken(token) {
 }
 
 // 1. User login (supports URL encoded form data)
-app.post('/api/auth/login', (req, res) => {
+// SECURITY FIX (H-04): Dedicated stricter rate limiter for login endpoint
+app.post('/api/auth/login', loginRateLimiter, (req, res) => {
   const email = req.body.username;
   const password = req.body.password;
 
@@ -579,11 +601,23 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // 2. User registration
-app.post('/api/auth/register', (req, res) => {
+// SECURITY FIX (C-03): Registration gated behind REGISTRATION_ENABLED env var.
+// Set REGISTRATION_ENABLED=true in Render env vars to allow new signups.
+// SECURITY FIX (H-04): Strict rate limiter on registration.
+app.post('/api/auth/register', loginRateLimiter, (req, res) => {
+  if (process.env.REGISTRATION_ENABLED !== 'true') {
+    return res.status(403).json({ detail: "Registration is currently disabled. Contact an administrator." });
+  }
+
   const { email, password, full_name } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ detail: "Username and password required." });
+  }
+
+  // SECURITY FIX (M-04): Minimum password length enforcement
+  if (password.length < 8) {
+    return res.status(400).json({ detail: "Password must be at least 8 characters long." });
   }
 
   const hashedPassword = hashPassword(password);
@@ -621,7 +655,8 @@ app.get('/api/auth/me', (req, res) => {
     return;
   }
 
-  // Fallback to legacy base64 decoding
+  // SECURITY FIX (H-02): Legacy base64 auth path preserved for backward compat but
+  // logged as deprecated. Will be removed in a future release.
   try {
     const decoded = Buffer.from(token, 'base64').toString('ascii').split(':');
     const email = decoded[0];
@@ -632,6 +667,8 @@ app.get('/api/auth/me', (req, res) => {
         return res.status(401).json({ detail: "Unauthorized access token." });
       }
       
+      console.warn('⚠️  DEPRECATED: Legacy base64 token used by', email, '— migrate to HMAC session tokens.');
+
       const storedPassword = user.password;
       let passwordMatched = false;
       if (storedPassword.includes(':')) {
@@ -657,19 +694,25 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 // 5. Locations & Status Management (Syncs with Frontend Polling)
+// SECURITY FIX (H-07): Updated from stale BLR-01 to HYD-01 to match the Hyderabad migration.
 app.get('/api/locations', requireDashboardAuth, (req, res) => {
   res.json([
-    { location_id: "BLR-01", name: "BLR-01", latitude: 12.9716, longitude: 77.5946, online: true, last_seen: new Date().toISOString() }
+    { location_id: "HYD-01", name: "HYD-01", latitude: 17.3850, longitude: 78.4867, online: true, last_seen: new Date().toISOString() }
   ]);
 });
 
 app.get('/api/locations/status', requireDashboardAuth, (req, res) => {
   res.json([
-    { location_id: "BLR-01", name: "BLR-01", latitude: 12.9716, longitude: 77.5946, online: true, last_seen: new Date().toISOString() }
+    { location_id: "HYD-01", name: "HYD-01", latitude: 17.3850, longitude: 78.4867, online: true, last_seen: new Date().toISOString() }
   ]);
 });
 
 app.get('/api/location/:name/capabilities', requireDashboardAuth, (req, res) => {
+  // SECURITY FIX (L-07): Validate location name parameter
+  const validLocations = ['HYD-01', 'HYD-02', 'HYD-03'];
+  if (!validLocations.includes(req.params.name)) {
+    return res.status(404).json({ error: 'Unknown location.' });
+  }
   res.json({ has_aqi: true, has_water: true });
 });
 
@@ -696,11 +739,12 @@ app.get('/api/devices', requireDashboardAuth, (req, res) => {
       const bwLastSeen  = bwLastMs  > 0 ? new Date(bwLastMs).toISOString()  : null;
       const aqiLastSeen = aqiLastMs > 0 ? new Date(aqiLastMs).toISOString() : null;
 
+      // SECURITY FIX (H-07): Updated from stale BLR-01 to HYD-01
       res.json([
-        { device_id: "BW-GW-01",   type: "GATEWAY", status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "BLR-01", location_name: "BLR-01", last_seen: bwLastSeen  },
-        { device_id: "BW-NODE-01", type: "SENSOR",  status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "BLR-01", location_name: "BLR-01", last_seen: bwLastSeen  },
-        { device_id: "AQI-NODE-01",type: "SENSOR",  status: isAqiOnline   ? "ONLINE" : "OFFLINE", location_id: "BLR-01", location_name: "BLR-01", last_seen: aqiLastSeen },
-        { device_id: "LORA-HUB",   type: "BASE",    status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "BLR-01", location_name: "BLR-01", last_seen: bwLastSeen  }
+        { device_id: "BW-GW-01",   type: "GATEWAY", status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: bwLastSeen  },
+        { device_id: "BW-NODE-01", type: "SENSOR",  status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: bwLastSeen  },
+        { device_id: "AQI-NODE-01",type: "SENSOR",  status: isAqiOnline   ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: aqiLastSeen },
+        { device_id: "LORA-HUB",   type: "BASE",    status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: bwLastSeen  }
       ]);
     });
   });

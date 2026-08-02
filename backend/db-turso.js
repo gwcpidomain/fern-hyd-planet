@@ -205,9 +205,9 @@ async function initSchema(client) {
           ON aqi_history(timestamp)`
   ], 'write');
 
-  // Step 2: Seed default login user — only if missing
+  // SECURITY FIX (H-06): Migrated default admin username from 'trifecta' to 'fern'
   const userRow = await client.execute(
-    "SELECT COUNT(*) as cnt FROM users WHERE email = 'trifecta'"
+    "SELECT COUNT(*) as cnt FROM users WHERE email = 'fern'"
   );
   if (Number(userRow.rows[0].cnt) === 0) {
     const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD
@@ -215,7 +215,7 @@ async function initSchema(client) {
           const rand = crypto.randomBytes(12).toString('base64url');
           console.log('🔑 ══════════════════════════════════════════════════');
           console.log('🔑  FIRST-BOOT ADMIN CREDENTIALS FOR TURSO (save these now!)');
-          console.log(`🔑  Username : trifecta`);
+          console.log(`🔑  Username : fern`);
           console.log(`🔑  Password : ${rand}`);
           console.log('🔑  To keep this password across restarts, set:');
           console.log('🔑  DEFAULT_ADMIN_PASSWORD env var in Render Dashboard');
@@ -224,10 +224,10 @@ async function initSchema(client) {
         })();
     const hashed = hashPassword(adminPassword);
     await client.execute({
-      sql:  "INSERT INTO users (email, password, full_name) VALUES ('trifecta', ?, 'Trifecta Admin')",
+      sql:  "INSERT INTO users (email, password, full_name) VALUES ('fern', ?, 'Fern Admin')",
       args: [hashed],
     });
-    console.log("✅ Default user 'trifecta' seeded in Turso");
+    console.log("✅ Default user 'fern' seeded in Turso");
   }
 
   // Step 3: Seed borewell state rows — only if empty

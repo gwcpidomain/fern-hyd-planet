@@ -109,7 +109,8 @@ function requireDashboardAuth(req, res, next) {
         return;
     }
 
-    // 3. Fallback for legacy base64 token validation against users table
+    // SECURITY FIX (H-02): Legacy base64 auth path preserved for backward compat but
+    // logged as deprecated. Will be removed in a future release.
     try {
         const decoded = Buffer.from(token, 'base64').toString('ascii').split(':');
         const email = decoded[0];
@@ -121,6 +122,7 @@ function requireDashboardAuth(req, res, next) {
                     return res.status(403).json({ error: 'Access denied: Invalid credentials.' });
                 }
                 
+                console.warn('⚠️  DEPRECATED: Legacy base64 token used by', email, '— migrate to HMAC session tokens.');
                 const storedPassword = user.password;
                 let passwordMatched = false;
                 if (storedPassword.includes(':')) {

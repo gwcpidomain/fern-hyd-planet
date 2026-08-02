@@ -41,7 +41,8 @@ db.serialize(() => {
     full_name TEXT
   )`);
 
-  db.get("SELECT COUNT(*) as count FROM users WHERE email = 'trifecta'", (err, row) => {
+  // SECURITY FIX (H-06): Migrated default admin username from 'trifecta' to 'fern'
+  db.get("SELECT COUNT(*) as count FROM users WHERE email = 'fern'", (err, row) => {
     if (row && row.count === 0) {
       // Use configured password from env var, or generate a secure random one
       const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD
@@ -49,7 +50,7 @@ db.serialize(() => {
             const rand = crypto.randomBytes(12).toString('base64url');
             console.log('🔑 ══════════════════════════════════════════════════');
             console.log('🔑  FIRST-BOOT ADMIN CREDENTIALS (save these now!)');
-            console.log(`🔑  Username : trifecta`);
+            console.log(`🔑  Username : fern`);
             console.log(`🔑  Password : ${rand}`);
             console.log('🔑  To keep this password across restarts, set:');
             console.log('🔑  DEFAULT_ADMIN_PASSWORD env var in Render Dashboard');
@@ -57,7 +58,7 @@ db.serialize(() => {
             return rand;
           })();
       const hashedPassword = hashPassword(adminPassword);
-      db.run("INSERT INTO users (email, password, full_name) VALUES ('trifecta', ?, 'Trifecta Admin')", [hashedPassword]);
+      db.run("INSERT INTO users (email, password, full_name) VALUES ('fern', ?, 'Fern Admin')", [hashedPassword]);
     }
   });
 

@@ -32,8 +32,9 @@ setInterval(() => {
 }, 600000);
 
 function rateLimiter(req, res, next) {
-
-  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  // SECURITY FIX (H-08): Use req.ip (respects app.set('trust proxy', 1)) instead of
+  // raw X-Forwarded-For which can be spoofed by clients.
+  const ip = req.ip;
   const now = Date.now();
 
   if (!requestMap.has(ip)) {

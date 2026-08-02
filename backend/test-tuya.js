@@ -19,10 +19,19 @@ try { require('dotenv').config(); } catch (_) {}
 
 const { TuyaContext } = require('@tuya/tuya-connector-nodejs');
 
-const CLIENT_ID     = process.env.TUYA_CLIENT_ID     || '3txvr4txhp9pj3yxht3c';
-const CLIENT_SECRET = process.env.TUYA_CLIENT_SECRET || '5c83b0438a1f47fbaa901eaa7c81b9bb';
-const DEVICE_ID     = process.env.TUYA_DEVICE_ID     || 'd7fd6b48692bb3a2c8a6rf';
-const REGION_URL    = process.env.TUYA_REGION_URL    || 'https://openapi.tuyain.com';
+const CLIENT_ID     = process.env.TUYA_CLIENT_ID;
+const CLIENT_SECRET = process.env.TUYA_CLIENT_SECRET;
+const DEVICE_ID     = process.env.TUYA_DEVICE_ID;
+const REGION_URL    = process.env.TUYA_REGION_URL;
+
+// SECURITY FIX (C-01): Credentials must come from env vars — never hardcoded.
+const missing = ['TUYA_CLIENT_ID', 'TUYA_CLIENT_SECRET', 'TUYA_DEVICE_ID', 'TUYA_REGION_URL']
+  .filter(k => !process.env[k]);
+if (missing.length > 0) {
+  console.error('❌ Missing required environment variables:', missing.join(', '));
+  console.error('   Set them in your shell or a .env file before running this test.');
+  process.exit(1);
+}
 
 // Same scaling logic as tuyaService.js
 function parseTuyaStatus(statusArray) {

@@ -30,9 +30,9 @@ interface GlobalComparativeGlobeProps {
 
 export const GlobalComparativeGlobe = memo(function GlobalComparativeGlobe({
   userAQI = 42,
-  userLat = 12.9716,
-  userLng = 77.5946,
-  locationName = "BLR-01",
+  userLat = 17.3850,
+  userLng = 78.4867,
+  locationName = "HYD-01",
 }: GlobalComparativeGlobeProps) {
   const [globalData, setGlobalData] = useState<GlobalAQPoint[]>([])
   const [loading, setLoading] = useState(true)

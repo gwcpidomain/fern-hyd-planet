@@ -14,7 +14,7 @@ const spaceGrotesk = {
 };
 
 export const metadata: Metadata = {
-  title: 'Trifecta insights',
+  title: 'Fern Insights',
   description: 'Real-time environmental monitoring dashboard for air quality and groundwater levels',
   generator: 'v0.app',
   icons: {

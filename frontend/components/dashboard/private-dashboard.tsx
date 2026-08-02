@@ -117,7 +117,7 @@ export function PrivateDashboard() {
 
     // Location Management
     const [locations, setLocations] = useState<any[]>([])
-    const [currentLocation, setCurrentLocation] = useState("BLR-01")
+    const [currentLocation, setCurrentLocation] = useState("HYD-01")
     const [capabilities, setCapabilities] = useState({ has_aqi: true, has_water: true })
 
     // Devices State
@@ -643,9 +643,9 @@ export function PrivateDashboard() {
 
         // Seed locations/devices once
         const demoLocs = [
-            { location_id: "BLR-01", name: "BLR-01", latitude: 12.9716, longitude: 77.5946, online: true, last_seen: new Date().toISOString() },
-            { location_id: "BLR-02", name: "BLR-02", latitude: 12.9352, longitude: 77.6245, online: true, last_seen: new Date().toISOString() },
-            { location_id: "BLR-03", name: "BLR-03", latitude: 13.0358, longitude: 77.5970, online: true, last_seen: new Date().toISOString() },
+            { location_id: "HYD-01", name: "HYD-01", latitude: 17.3850, longitude: 78.4867, online: true, last_seen: new Date().toISOString() },
+            { location_id: "HYD-02", name: "HYD-02", latitude: 17.3616, longitude: 78.4747, online: true, last_seen: new Date().toISOString() },
+            { location_id: "HYD-03", name: "HYD-03", latitude: 17.4065, longitude: 78.4772, online: true, last_seen: new Date().toISOString() },
         ];
 
         setCapabilities({ has_aqi: true, has_water: true });
@@ -658,14 +658,14 @@ export function PrivateDashboard() {
         });
 
         setMyDevices([
-            { device_id: "AQI-CAM-01", type: "aqi_camera", status: "ONLINE", location_id: "BLR-01", location_name: "BLR-01", last_seen: new Date().toISOString() },
-            { device_id: "AIR-SENS-02", type: "aqi", status: "ONLINE", location_id: "BLR-02", location_name: "BLR-02", last_seen: new Date().toISOString() },
-            { device_id: "WATER-01", type: "water_sensor", status: "ONLINE", location_id: "BLR-01", location_name: "BLR-01", last_seen: new Date().toISOString() },
-            { device_id: "PUMP-01", type: "pump_monitor", status: "ONLINE", location_id: "BLR-03", location_name: "BLR-03", last_seen: new Date().toISOString() },
+            { device_id: "AQI-CAM-01", type: "aqi_camera", status: "ONLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: new Date().toISOString() },
+            { device_id: "AIR-SENS-02", type: "aqi", status: "ONLINE", location_id: "HYD-02", location_name: "HYD-02", last_seen: new Date().toISOString() },
+            { device_id: "WATER-01", type: "water_sensor", status: "ONLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: new Date().toISOString() },
+            { device_id: "PUMP-01", type: "pump_monitor", status: "ONLINE", location_id: "HYD-03", location_name: "HYD-03", last_seen: new Date().toISOString() },
         ]);
 
         if (!currentLocation) {
-            setCurrentLocation("BLR-01");
+            setCurrentLocation("HYD-01");
         }
 
         // Initialize baseline values if missing
@@ -1205,9 +1205,9 @@ export function PrivateDashboard() {
                                                 pm25: safeAirData.pm25,
                                                 pm10: safeAirData.pm10
                                             }).aqi}
-                                            userLat={locationsStatus[currentLocation]?.latitude ?? 12.9716}
-                                            userLng={locationsStatus[currentLocation]?.longitude ?? 77.5946}
-                                            locationName={currentLocation || "BLR-01"}
+                                            userLat={locationsStatus[currentLocation]?.latitude ?? 17.3850}
+                                            userLng={locationsStatus[currentLocation]?.longitude ?? 78.4867}
+                                            locationName={currentLocation || "HYD-01"}
                                         />
                                     </ErrorBoundary>
                                 </div>
