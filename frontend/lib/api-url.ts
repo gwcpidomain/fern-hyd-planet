@@ -22,7 +22,7 @@ export function getApiBaseUrl(): string {
             // Dynamically query localhost backend for local development subdomains
             return `${window.location.protocol}//localhost:8000`;
         }
-        return "https://planet-deployment.onrender.com";
+        return "https://fern-hyd-planet.onrender.com";
     }
     // SSR fallback
     return "http://localhost:8000";
