@@ -9,7 +9,7 @@ type RealtimeData = {
     data: Record<string, number>;
 };
 
-export function useRealtimeData(locationId: string, token: string | null) {
+export function useRealtimeData(locationId: string, token: string | null, tenantId?: string) {
     const [data, setData] = useState<RealtimeData | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isLive, setIsLive] = useState(false);
@@ -55,7 +55,12 @@ export function useRealtimeData(locationId: string, token: string | null) {
                     setIsOffline(false);
 
                     if (payload.type !== 'heartbeat') {
-                        setData(payload);
+                        // Only process messages belonging to this tenant.
+                        // Messages with no tenant_id (legacy / simulator) always pass through.
+                        const msgTenant = (payload as any).tenant_id;
+                        if (!msgTenant || !tenantId || msgTenant === tenantId) {
+                            setData(payload);
+                        }
                     }
                 } catch (err) {
                     console.error("❌ Error parsing WS message:", err);

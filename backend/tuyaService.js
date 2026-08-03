@@ -96,6 +96,7 @@ function startTuyaPoller(db, broadcast) {
     TUYA_CLIENT_SECRET,
     TUYA_DEVICE_ID,
     TUYA_REGION_URL,
+    TUYA_TENANT_ID,   // Which tenant this physical device belongs to (e.g. 'fern')
   } = process.env;
 
   if (!TUYA_CLIENT_ID || !TUYA_CLIENT_SECRET || !TUYA_DEVICE_ID || !TUYA_REGION_URL) {
@@ -103,6 +104,10 @@ function startTuyaPoller(db, broadcast) {
     console.warn('   Required: TUYA_CLIENT_ID, TUYA_CLIENT_SECRET, TUYA_DEVICE_ID, TUYA_REGION_URL');
     return;
   }
+
+  // Which tenant owns this Tuya device — defaults to 'fern' if not explicitly set
+  const tenantId = TUYA_TENANT_ID || 'fern';
+  console.log(`🏠 Tuya poller will write AQI data to tenant: '${tenantId}'`);
 
   // Initialise the Tuya SDK context — handles access token fetch + refresh automatically
   const tuya = new TuyaContext({
@@ -139,17 +144,17 @@ function startTuyaPoller(db, broadcast) {
       const category = getCategory(aqi);
       const dominant = calculateCpcbSubIndex(pm25, 'pm25') >= calculateCpcbSubIndex(pm10, 'pm10') ? 'pm25' : 'pm10';
 
-      // Write to aqi_history table (same schema as the ESP32 AQI path in server.js)
+      // Write to aqi_history table — scoped to tenant so each site's AQI is isolated
       db.run(
-        `INSERT INTO aqi_history (pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi],
+        `INSERT INTO aqi_history (pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi, tenant_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi, tenantId],
         function (err) {
           if (err) {
             console.error('❌ Tuya: DB insert error:', err.message);
           } else {
             console.log(
-              `🌬️ [Tuya] AQI=${aqi} (${category}) | PM2.5=${pm25} PM10=${pm10} PM1=${pm1} ` +
+              `🌬️ [Tuya|${tenantId}] AQI=${aqi} (${category}) | PM2.5=${pm25} PM10=${pm10} PM1=${pm1} ` +
               `CO2=${co2} TVOC=${tvoc.toFixed(3)} HCHO=${hcho.toFixed(3)} ` +
               `Temp=${temp}°C Humidity=${humidity}%`
             );
@@ -157,10 +162,11 @@ function startTuyaPoller(db, broadcast) {
         }
       );
 
-      // Broadcast to all connected dashboard clients over WebSocket.
-      // Uses identical event format as the ESP32 /api/aqi route — no frontend changes needed.
+      // Broadcast to dashboard clients — tagged with tenant_id so each subdomain
+      // only receives its own site's AQI readings via the WebSocket filter.
       broadcast({
         type: 'aqi',
+        tenant_id: tenantId,
         timestamp: new Date().toISOString(),
         data: {
           pm25,

@@ -125,7 +125,7 @@ export function PrivateDashboard() {
     const [myDevices, setMyDevices] = useState<any[]>([])
 
     // Real-Time Data Hook (Pass Token!)
-    const { data: wsData, isConnected: wsConnected, isLive, lastMessageTime, isOffline: wsOffline } = useRealtimeData(currentLocation, token);
+    const { data: wsData, isConnected: wsConnected, isLive, lastMessageTime, isOffline: wsOffline } = useRealtimeData(currentLocation, token, tenantId);
 
     const [lastAirTime, setLastAirTime] = useState(0);
     const lastAirTimeRef = useRef(0);
