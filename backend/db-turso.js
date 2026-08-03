@@ -130,11 +130,22 @@ function createTursoDb() {
   // Initialise schema in the background.
   // Routes only receive traffic after Node.js finishes starting, so this
   // will complete long before the first HTTP request arrives.
-  initSchema(client).then(() => {
-    console.log('✅ Turso schema ready — database is persistent across Render restarts');
-  }).catch(err => {
-    console.error('❌ Turso schema init failed:', err);
-  });
+  client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tenants'")
+    .then(async (result) => {
+      if (result.rows.length === 0) {
+        console.log("🔄 [Turso] Performing Multi-Tenancy database migration (dropping single-tenant tables)...");
+        await client.batch([
+          "DROP TABLE IF EXISTS users",
+          "DROP TABLE IF EXISTS borewell_state",
+          "DROP TABLE IF EXISTS readings_history",
+          "DROP TABLE IF EXISTS aqi_history"
+        ], 'write');
+      }
+      await initSchema(client);
+      console.log('✅ Turso schema ready — database is persistent across Render restarts');
+    }).catch(err => {
+      console.error('❌ Turso schema init failed:', err);
+    });
 
   return db;
 }
@@ -143,14 +154,28 @@ function createTursoDb() {
 async function initSchema(client) {
   // Step 1: Create all tables in one atomic batch (guaranteed ordering)
   await client.batch([
+    `CREATE TABLE IF NOT EXISTS tenants (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      logo_url TEXT,
+      primary_color TEXT,
+      secondary_color TEXT,
+      latitude REAL,
+      longitude REAL,
+      address TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`,
     `CREATE TABLE IF NOT EXISTS users (
-      id        INTEGER PRIMARY KEY AUTOINCREMENT,
-      email     TEXT UNIQUE,
-      password  TEXT,
-      full_name TEXT
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT,
+      password TEXT,
+      full_name TEXT,
+      tenant_id TEXT,
+      UNIQUE(email, tenant_id)
     )`,
     `CREATE TABLE IF NOT EXISTS borewell_state (
-      id               TEXT PRIMARY KEY,
+      id               TEXT,
+      tenant_id        TEXT,
       name             TEXT,
       is_motor_on      INTEGER DEFAULT 0,
       flow_rate        REAL    DEFAULT 0,
@@ -167,11 +192,13 @@ async function initSchema(client) {
       water_status     TEXT,
       turbidity_status TEXT,
       tds_status       TEXT,
-      last_updated     TEXT    DEFAULT (datetime('now'))
+      last_updated     TEXT    DEFAULT (datetime('now')),
+      PRIMARY KEY (id, tenant_id)
     )`,
     `CREATE TABLE IF NOT EXISTS readings_history (
       id               INTEGER PRIMARY KEY AUTOINCREMENT,
       borewell_id      TEXT,
+      tenant_id        TEXT,
       flow_rate        REAL,
       water_level      REAL,
       efficiency       REAL,
@@ -197,17 +224,34 @@ async function initSchema(client) {
       temp      REAL,
       humidity  REAL,
       aqi       REAL,
+      tenant_id TEXT,
       timestamp TEXT DEFAULT (datetime('now'))
     )`,
-    `CREATE INDEX IF NOT EXISTS idx_readings_borewell_time
-          ON readings_history(borewell_id, timestamp)`,
-    `CREATE INDEX IF NOT EXISTS idx_aqi_time
-          ON aqi_history(timestamp)`
+    `CREATE INDEX IF NOT EXISTS idx_readings_tenant_borewell_time
+          ON readings_history(tenant_id, borewell_id, timestamp DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_aqi_tenant_time
+          ON aqi_history(tenant_id, timestamp DESC)`
   ], 'write');
 
-  // SECURITY FIX (H-06): Migrated default admin username from 'trifecta' to 'fern'
+  // Step 2: Seed default tenants
+  const tenantRow = await client.execute('SELECT COUNT(*) as cnt FROM tenants');
+  if (Number(tenantRow.rows[0].cnt) === 0) {
+    await client.batch([
+      {
+        sql: "INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('fern', 'Fern Insights', '/logo.png', '#10b981', '#06b6d4', 17.3850, 78.4867, 'Sy 438,439, Fern Villas, Srisailam Hwy, Maheshwaram, Malikdanguda, Maheshwaram, Telangana 501359')",
+        args: []
+      },
+      {
+        sql: "INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('trifecta', 'Trifecta Insights', '/logo.png', '#3b82f6', '#1d4ed8', 12.9716, 77.5946, 'Trifecta Offices, Outer Ring Road, Bangalore, Karnataka 560103')",
+        args: []
+      }
+    ], 'write');
+    console.log("✅ Default tenants seeded in Turso");
+  }
+
+  // Step 3: Seed default login users
   const userRow = await client.execute(
-    "SELECT COUNT(*) as cnt FROM users WHERE email = 'fern'"
+    "SELECT COUNT(*) as cnt FROM users WHERE email = 'fern' OR email = 'trifecta'"
   );
   if (Number(userRow.rows[0].cnt) === 0) {
     const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD
@@ -215,51 +259,61 @@ async function initSchema(client) {
           const rand = crypto.randomBytes(12).toString('base64url');
           console.log('🔑 ══════════════════════════════════════════════════');
           console.log('🔑  FIRST-BOOT ADMIN CREDENTIALS FOR TURSO (save these now!)');
-          console.log(`🔑  Username : fern`);
-          console.log(`🔑  Password : ${rand}`);
+          console.log(`🔑  Default Password : ${rand}`);
           console.log('🔑  To keep this password across restarts, set:');
           console.log('🔑  DEFAULT_ADMIN_PASSWORD env var in Render Dashboard');
           console.log('🔑 ══════════════════════════════════════════════════');
           return rand;
         })();
     const hashed = hashPassword(adminPassword);
-    await client.execute({
-      sql:  "INSERT INTO users (email, password, full_name) VALUES ('fern', ?, 'Fern Admin')",
-      args: [hashed],
-    });
-    console.log("✅ Default user 'fern' seeded in Turso");
+    await client.batch([
+      {
+        sql: "INSERT INTO users (email, password, full_name, tenant_id) VALUES ('fern', ?, 'Fern Admin', 'fern')",
+        args: [hashed]
+      },
+      {
+        sql: "INSERT INTO users (email, password, full_name, tenant_id) VALUES ('trifecta', ?, 'Trifecta Admin', 'trifecta')",
+        args: [hashed]
+      }
+    ], 'write');
+    console.log("✅ Default users seeded in Turso");
   }
 
-  // Step 3: Seed borewell state rows — only if empty
+  // Step 4: Seed borewell state rows — only if empty
   const bwRow = await client.execute('SELECT COUNT(*) as cnt FROM borewell_state');
   if (Number(bwRow.rows[0].cnt) === 0) {
     await client.batch([
-      "INSERT INTO borewell_state (id, name, water_level) VALUES ('BW-01', 'Borewell 1', 5.5)",
-      "INSERT INTO borewell_state (id, name, water_level) VALUES ('BW-02', 'Borewell 2', 3.2)",
-      "INSERT INTO borewell_state (id, name, water_level) VALUES ('BW-03', 'Borewell 3', 4.8)"
+      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'fern', 'Borewell 1', 5.5)",
+      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-02', 'fern', 'Borewell 2', 3.2)",
+      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-03', 'fern', 'Borewell 3', 4.8)",
+      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'trifecta', 'Borewell 1', 5.5)",
+      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-02', 'trifecta', 'Borewell 2', 3.2)",
+      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-03', 'trifecta', 'Borewell 3', 4.8)"
     ], 'write');
     console.log('✅ Borewell state seeded in Turso');
   }
 
-  // Step 4: Seed 24 h of initial readings — only if empty
+  // Step 5: Seed 24 h of initial readings — only if empty
   const histRow = await client.execute('SELECT COUNT(*) as cnt FROM readings_history');
   if (Number(histRow.rows[0].cnt) === 0) {
     const now = Date.now();
     const seedBatch = [];
-    for (let i = 24; i >= 0; i--) {
-      const t       = (24 - i) / 24;
-      const timeStr = new Date(now - i * 3_600_000).toISOString().replace('T', ' ').substring(0, 19);
-      const lvl     = parseFloat((5.2  + Math.sin(t * Math.PI * 2) * 0.4  + Math.random() * 0.1).toFixed(2));
-      const ph      = parseFloat((7.35 + Math.sin(t * Math.PI * 4) * 0.15 + Math.random() * 0.05).toFixed(2));
-      const tds     = parseFloat((215  + Math.sin(t * Math.PI * 2) * 15   + Math.random() * 4).toFixed(1));
-      const turb    = parseFloat((1.4  + Math.cos(t * Math.PI * 2) * 0.3  + Math.random() * 0.08).toFixed(2));
-      seedBatch.push({
-        sql:  `INSERT INTO readings_history
-               (borewell_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, timestamp)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: ['BW-01', 0.0, lvl, 0.0, 230.0, 0.0, ph, tds, turb, timeStr],
-      });
-    }
+    ['fern', 'trifecta'].forEach(tenant => {
+      for (let i = 24; i >= 0; i--) {
+        const t       = (24 - i) / 24;
+        const timeStr = new Date(now - i * 3_600_000).toISOString().replace('T', ' ').substring(0, 19);
+        const lvl     = parseFloat((5.2  + Math.sin(t * Math.PI * 2) * 0.4  + Math.random() * 0.1).toFixed(2));
+        const ph      = parseFloat((7.35 + Math.sin(t * Math.PI * 4) * 0.15 + Math.random() * 0.05).toFixed(2));
+        const tds     = parseFloat((215  + Math.sin(t * Math.PI * 2) * 15   + Math.random() * 4).toFixed(1));
+        const turb    = parseFloat((1.4  + Math.cos(t * Math.PI * 2) * 0.3  + Math.random() * 0.08).toFixed(2));
+        seedBatch.push({
+          sql:  `INSERT INTO readings_history
+                 (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: ['BW-01', tenant, 0.0, lvl, 0.0, 230.0, 0.0, ph, tds, turb, timeStr],
+        });
+      }
+    });
     await client.batch(seedBatch, 'write');
     console.log('✅ Initial 24h readings history seeded in Turso');
   }

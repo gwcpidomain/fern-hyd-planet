@@ -13,7 +13,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +41,6 @@ export default function SignupPage() {
     setIsSubmitting(true);
 
     try {
-      // Maps username to email and full_name properties for backend compatibility
       await register(username, password, username);
       setSuccessMsg("Identity registered successfully! Redirecting...");
       setTimeout(() => {
@@ -76,7 +74,7 @@ export default function SignupPage() {
           
           {/* Top Shield Check Icon */}
           <div className="flex justify-center mb-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/10 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
               <ShieldCheck className="h-5 w-5 text-purple-400" />
             </div>
           </div>
@@ -106,7 +104,7 @@ export default function SignupPage() {
               </div>
             )}
 
-            {/* Username / User ID */}
+            {/* User ID */}
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input

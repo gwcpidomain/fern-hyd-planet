@@ -66,7 +66,8 @@ const GlobalComparativeGlobe = dynamic(
 )
 
 export function PrivateDashboard() {
-    const { token, user } = useAuth();
+    const { token, user, tenantId } = useAuth();
+    const [tenantConfig, setTenantConfig] = useState<{ id: string; name: string; primary_color?: string; secondary_color?: string; logo_url?: string; address?: string } | null>(null);
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
     const [isSidebarOpen, setIsSidebarOpen] = useState(false)
     const [maxWaterLevel, setMaxWaterLevel] = useState(0)
@@ -286,6 +287,23 @@ export function PrivateDashboard() {
             .catch(err => console.error("Failed to fetch locations:", err));
     }, [token, demoMode]);
 
+    // Fetch Tenant Branding Config on Mount
+    useEffect(() => {
+        if (!token) return;
+        apiClient("/api/tenant/config", { token, showErrorToast: false })
+            .then((cfg: any) => {
+                setTenantConfig(cfg);
+                // Apply tenant brand colors as CSS custom properties
+                if (cfg?.primary_color) {
+                    document.documentElement.style.setProperty('--primary', cfg.primary_color);
+                }
+                if (cfg?.secondary_color) {
+                    document.documentElement.style.setProperty('--secondary', cfg.secondary_color);
+                }
+            })
+            .catch(() => { /* branding is non-critical, fail silently */ });
+    }, [token]);
+
     // 2. Clear State on Location Switch
     const handleLocationSelect = (locName: string) => {
         setCurrentLocation(locName);
@@ -481,7 +499,12 @@ export function PrivateDashboard() {
 
     // 4. Update State from WebSocket
     useEffect(() => {
-        if (wsData && wsData.type === 'aqi') {
+        if (!wsData) return;
+        if ((wsData as any).tenant_id && (wsData as any).tenant_id !== tenantId) {
+            return;
+        }
+
+        if (wsData.type === 'aqi') {
             // AQI data is ALWAYS live as requested
             setAirData(prev => {
                 const currentChart = prev?.chartData || { labels: [], pm25: [], pm10: [], co2: [], tvoc: [], hcho: [], temp: [], humidity: [] };
@@ -1108,11 +1131,11 @@ export function PrivateDashboard() {
                                 </div>
                             </button>
                             <div>
-                                <img src="/logo.png" alt="Planet Insights" className="h-6 object-contain" />
+                                <img src={tenantConfig?.logo_url || "/logo.png"} alt={tenantConfig?.name || "Planet Insights"} className="h-6 object-contain" />
                             </div>
                             {currentLocation && (
                                 <div className="ml-2 px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-emerald-400 border border-emerald-500/20">
-                                    LOC: {currentLocation}
+                                    {tenantConfig?.name ? tenantConfig.name.toUpperCase() : 'LOC'}: {currentLocation}
                                 </div>
                             )}
                         </div>

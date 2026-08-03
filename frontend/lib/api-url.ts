@@ -12,12 +12,15 @@ export function getApiBaseUrl(): string {
         const hostname = window.location.hostname;
         if (
             hostname === 'localhost' || 
+            hostname.endsWith('.localhost') ||
             hostname === '127.0.0.1' || 
+            hostname.endsWith('.127.0.0.1') ||
             hostname.startsWith('192.168.') || 
             hostname.startsWith('10.') || 
             hostname.startsWith('172.')
         ) {
-            return `${window.location.protocol}//${hostname}:8000`;
+            // Dynamically query localhost backend for local development subdomains
+            return `${window.location.protocol}//localhost:8000`;
         }
         return "https://planet-deployment.onrender.com";
     }

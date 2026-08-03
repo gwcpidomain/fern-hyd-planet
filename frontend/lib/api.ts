@@ -1,4 +1,5 @@
 import { getApiUrl } from "./api-url";
+import { getTenantHeaders } from "./tenant";
 import { toast } from "sonner";
 
 interface FetchOptions extends RequestInit {
@@ -28,6 +29,12 @@ export async function apiClient<T = any>(
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
+
+  // Always inject the tenant identifier so the backend can scope queries correctly
+  const tenantHeaders = getTenantHeaders();
+  Object.entries(tenantHeaders).forEach(([k, v]) => {
+    if (!headers.has(k)) headers.set(k, v);
+  });
   
   // Set JSON content type by default for writes
   if (restOptions.method && ["POST", "PUT", "PATCH"].includes(restOptions.method.toUpperCase())) {

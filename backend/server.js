@@ -23,14 +23,29 @@ app.set('trust proxy', 1);
 // SECURITY FIX (H-05): Set security HTTP headers (HSTS, X-Content-Type-Options, X-Frame-Options, etc.)
 app.use(helmet());
 
-// SECURITY FIX (H-01): CORS defaults to deny-all if CORS_ORIGIN env var is not set.
-// Set CORS_ORIGIN=https://yourdomain.com in production.
+// SECURITY FIX (H-01): CORS defaults to deny-all if CORS_ORIGIN env var is not set in production.
+// Automatically allows localhost development origins in non-production environments.
 const corsOrigin = process.env.CORS_ORIGIN;
-if (!corsOrigin) {
+let originOption = false;
+
+if (corsOrigin) {
+  originOption = corsOrigin.split(',');
+} else if (process.env.NODE_ENV !== 'production') {
+  // Allow local development origins (including subdomains of localhost)
+  originOption = (origin, callback) => {
+    if (!origin || origin.indexOf('localhost') !== -1 || origin.indexOf('127.0.0.1') !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS in development'));
+    }
+  };
+} else {
   console.warn('⚠️  CORS_ORIGIN not set — CORS will deny cross-origin requests. Set this env var in production.');
 }
+
 const corsOptions = {
-  origin: corsOrigin || false
+  origin: originOption,
+  credentials: true
 };
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -68,15 +83,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 1. Get Live State (Restores values on Page Load)
+// 1. Get Live State (Restores values on Page Load) — scoped to active tenant
 app.get('/api/borewells', requireDashboardAuth, (req, res) => {
-  db.all("SELECT * FROM borewell_state ORDER BY id ASC", (err, rows) => {
+  db.all("SELECT * FROM borewell_state WHERE tenant_id = ? ORDER BY id ASC", [req.tenantId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows);
   });
 });
 
-// 2. Get Historical Data (For Trend Graphs)
+// 2. Get Historical Data (For Trend Graphs) — scoped to active tenant
 app.get('/api/history/:id', requireDashboardAuth, (req, res) => {
   const { id } = req.params;
   // SECURITY FIX (M-01): Whitelist borewell IDs to prevent enumeration
@@ -85,29 +100,30 @@ app.get('/api/history/:id', requireDashboardAuth, (req, res) => {
     return res.status(400).json({ error: `Invalid borewell ID "${id}". Valid IDs: ${validIds.join(', ')}` });
   }
   const limit = parseInt(req.query.limit, 10) || 50; // Last 50 points
-  db.all("SELECT * FROM readings_history WHERE borewell_id = ? ORDER BY timestamp DESC LIMIT ?", [id, limit], (err, rows) => {
+  db.all("SELECT * FROM readings_history WHERE borewell_id = ? AND tenant_id = ? ORDER BY timestamp DESC LIMIT ?", [id, req.tenantId, limit], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows.reverse()); // Return in chronological order
   });
 });
 
+// AQI history — scoped to active tenant
 app.get('/api/aqi/history', requireDashboardAuth, (req, res) => {
   const limit = parseInt(req.query.limit, 10) || 100;
-  db.all('SELECT * FROM aqi_history ORDER BY timestamp DESC LIMIT ?', [limit], (err, rows) => {
+  db.all('SELECT * FROM aqi_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, limit], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows.reverse());
   });
 });
 
-// CSV Export Endpoint - Merges Water and Air historical readings
+// CSV Export Endpoint - Merges Water and Air historical readings — scoped to active tenant
 app.get('/api/export/csv', requireDashboardAuth, (req, res) => {
   // SECURITY FIX (M-02): Cap export queries to prevent OOM on large datasets
   const exportLimit = parseInt(req.query.limit, 10) || 10000;
   const safeCsvLimit = Math.min(exportLimit, 50000);
-  db.all('SELECT * FROM readings_history ORDER BY timestamp DESC LIMIT ?', [safeCsvLimit], (err, waterRows) => {
+  db.all('SELECT * FROM readings_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, safeCsvLimit], (err, waterRows) => {
     if (err) return res.status(500).json({ error: err.message });
     
-    db.all('SELECT * FROM aqi_history ORDER BY timestamp DESC LIMIT ?', [safeCsvLimit], (err, aqiRows) => {
+    db.all('SELECT * FROM aqi_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, safeCsvLimit], (err, aqiRows) => {
       if (err) return res.status(500).json({ error: err.message });
       
       const combined = [];
@@ -214,19 +230,20 @@ app.get('/api/export/csv', requireDashboardAuth, (req, res) => {
   });
 });
 
-// 3. Control Toggle (UI -> Backend -> LoRa)
+// 3. Control Toggle (UI -> Backend -> LoRa) — scoped to active tenant
 app.post('/api/control', requireDashboardAuth, validateControlPayload, (req, res) => {
   const { id, command } = req.body;
-  console.log(`🔌 Command to Borewell ${id}: ${command}`);
+  console.log(`🔌 Command to Borewell ${id} (tenant=${req.tenantId}): ${command}`);
 
   const state = command === 'ON' ? 1 : 0;
-  db.run("UPDATE borewell_state SET is_motor_on = ?, last_updated = CURRENT_TIMESTAMP WHERE id = ?", [state, id], (err) => {
+  db.run("UPDATE borewell_state SET is_motor_on = ?, last_updated = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?", [state, id, req.tenantId], (err) => {
     if (err) return res.status(500).json({ error: err.message });
 
-    // Broadcast status update to all connected dashboard clients
+    // Broadcast status update to connected clients of this tenant
     broadcast({
       type: 'control_update',
       id: id,
+      tenant_id: req.tenantId,
       is_motor_on: state === 1
     });
 
@@ -234,14 +251,12 @@ app.post('/api/control', requireDashboardAuth, validateControlPayload, (req, res
   });
 });
 
-// 5. Receive Data from Heltec Gateway (Heltec -> Backend)
-app.post('/api/push', requireApiKey, validateWaterPayload, (req, res) => {
-  const payload = req.body;
-
+// Helper: core water ingestion logic — shared by /api/push/:tenantId and legacy /api/push
+function handleWaterPush(tenantId, payload, res) {
   const id = payload.id || 'BW-01';
-  
+
   // Retrieve current row values to prevent partial updates from clearing other sensors
-  db.get("SELECT * FROM borewell_state WHERE id = ?", [id], (err, row) => {
+  db.get("SELECT * FROM borewell_state WHERE id = ? AND tenant_id = ?", [id, tenantId], (err, row) => {
     if (err) {
       console.error("DB read error during ingestion:", err.message);
       return res.status(500).json({ error: err.message });
@@ -329,13 +344,13 @@ app.post('/api/push', requireApiKey, validateWaterPayload, (req, res) => {
     // Derive motor status: ON if current (amps) > 1.1A, else OFF
     const is_motor_on = a > 1.1 ? 1 : 0;
 
-    // Perform database UPDATE of live state
+    // Perform database UPDATE of live state — scoped to tenant
     db.run(`UPDATE borewell_state SET 
       flow_rate = ?, efficiency = ?, voltage = ?, current = ?, run_time_total = ?, water_level = ?, 
       ph = ?, tds = ?, turbidity = ?, is_motor_on = ?, total_liters = ?, current_status = ?, 
       water_status = ?, turbidity_status = ?, tds_status = ?, last_updated = CURRENT_TIMESTAMP 
-      WHERE id = ?`,
-      [flow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, id],
+      WHERE id = ? AND tenant_id = ?`,
+      [flow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, id, tenantId],
       function (updateErr) {
         if (updateErr) {
           console.error("DB Update Error during ingestion:", updateErr.message);
@@ -344,21 +359,22 @@ app.post('/api/push', requireApiKey, validateWaterPayload, (req, res) => {
 
         // AUDIT FIX (Finding 3.1 — Critical): INSERT reading into history on every ingest, not just 5-min intervals
         db.run(`INSERT INTO readings_history 
-          (borewell_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [id, flow, wl, eff, v, a, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status],
+          (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, tenantId, flow, wl, eff, v, a, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status],
           function (insertErr) {
             if (insertErr) {
               console.error("DB History insertion error during ingestion:", insertErr.message);
               // Non-fatal to client response, but logged.
             }
 
-            console.log(`💧 Water Data Ingested (Merged & Logged): ID=${id}, Flow=${flow} LPM, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
+            console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${flow} LPM, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
 
             // Broadcast to Frontend
             broadcast({
               type: 'water',
               id: id,
+              tenant_id: tenantId,
               timestamp: new Date().toISOString(),
               isMotorOn: is_motor_on === 1,
               data: {
@@ -386,6 +402,18 @@ app.post('/api/push', requireApiKey, validateWaterPayload, (req, res) => {
       }
     );
   });
+}
+
+// 5a. Receive Data from Heltec Gateway — tenant-scoped route (preferred)
+app.post('/api/push/:tenantId', requireApiKey, validateWaterPayload, (req, res) => {
+  const tenantId = req.params.tenantId;
+  handleWaterPush(tenantId, req.body, res);
+});
+
+// 5b. Legacy /api/push — falls back to default tenant (backwards compat with existing gateways)
+app.post('/api/push', requireApiKey, validateWaterPayload, (req, res) => {
+  const tenantId = req.body.tenant_id || 'fern';
+  handleWaterPush(tenantId, req.body, res);
 });
 
 // CPCB AQI Calculation Utility
@@ -454,22 +482,10 @@ function normalizeAqiPayload(raw) {
   return p;
 }
 
-app.post('/api/aqi', requireApiKey, (req, res, next) => {
-  // SECURITY FIX (M-07): Diagnostic logs gated behind DEBUG_PAYLOADS env var to avoid
-  // leaking IP addresses and raw payloads in production logs.
-  if (process.env.DEBUG_PAYLOADS === 'true') {
-    console.log('📡 AQI RAW PAYLOAD received from', req.ip, '→', JSON.stringify(req.body));
-  }
+// Core AQI ingestion handler — shared by tenant-scoped and legacy routes
+function handleAqiPush(tenantId, body, res) {
+  const { pm25, pm10, co2, tvoc, hcho, temp, humidity } = body;
 
-  // Normalize field names to handle any ESP32 firmware variant
-  req.body = normalizeAqiPayload(req.body);
-  if (process.env.DEBUG_PAYLOADS === 'true') {
-    console.log('🔄 AQI Normalized payload →', JSON.stringify(req.body));
-  }
-
-  next();
-}, validateAqiPayload, (req, res) => {
-  const { pm25, pm10, co2, tvoc, hcho, temp, humidity } = req.body;
   
   // Safe parsing values
   const safePm25 = safeFloat(pm25, 0);
@@ -490,9 +506,9 @@ app.post('/api/aqi', requireApiKey, (req, res, next) => {
   };
 
   db.run(`INSERT INTO aqi_history 
-    (pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [safePm25, safePm10, safeFloat(co2, 400), safeFloat(tvoc, 0), safeFloat(hcho, 0), safeFloat(temp, 0), safeFloat(humidity, 0), score],
+    (tenant_id, pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [tenantId, safePm25, safePm10, safeFloat(co2, 400), safeFloat(tvoc, 0), safeFloat(hcho, 0), safeFloat(temp, 0), safeFloat(humidity, 0), score],
     function(err) {
       if (err) {
         console.error("AQI DB Error:", err.message);
@@ -501,6 +517,7 @@ app.post('/api/aqi', requireApiKey, (req, res, next) => {
       
       broadcast({
         type: 'aqi',
+        tenant_id: tenantId,
         timestamp: new Date().toISOString(),
         data: {
           pm25: safePm25, 
@@ -516,7 +533,7 @@ app.post('/api/aqi', requireApiKey, (req, res, next) => {
         }
       });
 
-      console.log(`🌬️ AQI Data Ingested: ${score} (${getCategory(score)}). PM2.5=${safePm25}`);
+      console.log(`🌬️ AQI Data Ingested [tenant=${tenantId}]: ${score} (${getCategory(score)}). PM2.5=${safePm25}`);
 
       res.json({
         aqi: score,
@@ -525,6 +542,25 @@ app.post('/api/aqi', requireApiKey, (req, res, next) => {
       });
     }
   );
+}
+
+// AQI — tenant-scoped route (preferred)
+app.post('/api/aqi/:tenantId', requireApiKey, (req, res, next) => {
+  if (process.env.DEBUG_PAYLOADS === 'true') console.log('📡 AQI RAW PAYLOAD (tenant-scoped) →', JSON.stringify(req.body));
+  req.body = normalizeAqiPayload(req.body);
+  next();
+}, validateAqiPayload, (req, res) => {
+  handleAqiPush(req.params.tenantId, req.body, res);
+});
+
+// AQI — legacy /api/aqi (backwards compat)
+app.post('/api/aqi', requireApiKey, (req, res, next) => {
+  if (process.env.DEBUG_PAYLOADS === 'true') console.log('📡 AQI RAW PAYLOAD →', JSON.stringify(req.body));
+  req.body = normalizeAqiPayload(req.body);
+  next();
+}, validateAqiPayload, (req, res) => {
+  const tenantId = req.body.tenant_id || 'fern';
+  handleAqiPush(tenantId, req.body, res);
 });
 
 // --- AUTHENTICATION ENDPOINTS ---
@@ -538,8 +574,8 @@ function hashPassword(password, salt) {
   return `${finalSalt}:${hash}`;
 }
 
-function generateToken(userId, email) {
-  const payload = JSON.stringify({ userId, email, expires: Date.now() + 24 * 3600 * 1000 });
+function generateToken(userId, email, tenantId) {
+  const payload = JSON.stringify({ userId, email, tenantId, expires: Date.now() + 24 * 3600 * 1000 });
   const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   return Buffer.from(`${payload}.${signature}`).toString('base64');
 }
@@ -558,17 +594,31 @@ function verifyToken(token) {
   }
 }
 
+// Helper to resolve tenant ID from incoming HTTP request headers or hostnames
+function getTenantFromRequest(req) {
+  const headerTenant = req.headers['x-tenant-id'] || req.body?.tenant_id || req.query?.tenant_id;
+  if (headerTenant) return headerTenant;
+
+  const host = req.headers.host || '';
+  const parts = host.split('.');
+  if (parts.length > 2) {
+    const subdomain = parts[0];
+    if (subdomain !== 'www') return subdomain;
+  }
+  return 'fern'; // default fallback
+}
+
 // 1. User login (supports URL encoded form data)
-// SECURITY FIX (H-04): Dedicated stricter rate limiter for login endpoint
 app.post('/api/auth/login', loginRateLimiter, (req, res) => {
   const email = req.body.username;
   const password = req.body.password;
+  const tenantId = getTenantFromRequest(req);
 
   if (!email || !password) {
     return res.status(400).json({ detail: "Username and password required." });
   }
 
-  db.get('SELECT id, email, password, full_name FROM users WHERE email = ?', [email], (err, user) => {
+  db.get('SELECT id, email, password, full_name, tenant_id FROM users WHERE email = ? AND tenant_id = ?', [email, tenantId], (err, user) => {
     if (err) {
       console.error('Login error:', err);
       return res.status(500).json({ detail: "Internal database login error." });
@@ -586,7 +636,7 @@ app.post('/api/auth/login', loginRateLimiter, (req, res) => {
       passwordMatched = checkHashBuf.length === storedHashBuf.length &&
         crypto.timingSafeEqual(checkHashBuf, storedHashBuf);
     } else {
-      // Legacy plaintext fallback (timing-safe via fixed-length comparison)
+      // Legacy plaintext fallback
       passwordMatched = storedPassword.length === password.length &&
         crypto.timingSafeEqual(Buffer.from(storedPassword), Buffer.from(password));
     }
@@ -595,21 +645,19 @@ app.post('/api/auth/login', loginRateLimiter, (req, res) => {
       return res.status(401).json({ detail: "Incorrect username or password." });
     }
 
-    const token = generateToken(user.id, user.email);
+    const token = generateToken(user.id, user.email, user.tenant_id);
     res.json({ access_token: token });
   });
 });
 
 // 2. User registration
-// SECURITY FIX (C-03): Registration gated behind REGISTRATION_ENABLED env var.
-// Set REGISTRATION_ENABLED=true in Render env vars to allow new signups.
-// SECURITY FIX (H-04): Strict rate limiter on registration.
 app.post('/api/auth/register', loginRateLimiter, (req, res) => {
   if (process.env.REGISTRATION_ENABLED !== 'true') {
     return res.status(403).json({ detail: "Registration is currently disabled. Contact an administrator." });
   }
 
   const { email, password, full_name } = req.body;
+  const tenantId = getTenantFromRequest(req);
 
   if (!email || !password) {
     return res.status(400).json({ detail: "Username and password required." });
@@ -622,15 +670,21 @@ app.post('/api/auth/register', loginRateLimiter, (req, res) => {
 
   const hashedPassword = hashPassword(password);
 
-  db.run('INSERT INTO users (email, password, full_name) VALUES (?, ?, ?)', [email, hashedPassword, full_name || email], function(err) {
-    if (err) {
-      if (err.message.includes('UNIQUE')) {
-        return res.status(400).json({ detail: "Username already exists." });
-      }
-      console.error('Registration error:', err);
-      return res.status(500).json({ detail: "Internal database registration error." });
+  db.get('SELECT id FROM tenants WHERE id = ?', [tenantId], (err, tenant) => {
+    if (err || !tenant) {
+      return res.status(400).json({ detail: "Workspace not found. Cannot register user for this node." });
     }
-    res.json({ status: "Success", userId: this.lastID });
+
+    db.run('INSERT INTO users (email, password, full_name, tenant_id) VALUES (?, ?, ?, ?)', [email, hashedPassword, full_name || email, tenantId], function(err) {
+      if (err) {
+        if (err.message.includes('UNIQUE')) {
+          return res.status(400).json({ detail: "Username already exists." });
+        }
+        console.error('Registration error:', err);
+        return res.status(500).json({ detail: "Internal database registration error." });
+      }
+      res.json({ status: "Success", userId: this.lastID });
+    });
   });
 });
 
@@ -646,7 +700,7 @@ app.get('/api/auth/me', (req, res) => {
   // Try dynamic session first
   const session = verifyToken(token);
   if (session) {
-    db.get('SELECT id, email, full_name FROM users WHERE id = ?', [session.userId], (err, user) => {
+    db.get('SELECT id, email, full_name, tenant_id FROM users WHERE id = ?', [session.userId], (err, user) => {
       if (err || !user) {
         return res.status(401).json({ detail: "Unauthorized access token." });
       }
@@ -655,14 +709,14 @@ app.get('/api/auth/me', (req, res) => {
     return;
   }
 
-  // SECURITY FIX (H-02): Legacy base64 auth path preserved for backward compat but
-  // logged as deprecated. Will be removed in a future release.
+  // SECURITY FIX (H-02): Legacy base64 auth path preserved for backward compat
   try {
     const decoded = Buffer.from(token, 'base64').toString('ascii').split(':');
     const email = decoded[0];
     const password = decoded[1];
+    const targetTenant = getTenantFromRequest(req);
 
-    db.get('SELECT id, email, password, full_name FROM users WHERE email = ?', [email], (err, user) => {
+    db.get('SELECT id, email, password, full_name, tenant_id FROM users WHERE email = ? AND tenant_id = ?', [email, targetTenant], (err, user) => {
       if (err || !user) {
         return res.status(401).json({ detail: "Unauthorized access token." });
       }
@@ -686,43 +740,96 @@ app.get('/api/auth/me', (req, res) => {
         return res.status(401).json({ detail: "Unauthorized access token." });
       }
       
-      res.json({ id: user.id, email: user.email, full_name: user.full_name });
+      res.json({ id: user.id, email: user.email, full_name: user.full_name, tenant_id: user.tenant_id });
     });
   } catch (e) {
     return res.status(401).json({ detail: "Invalid session token." });
   }
 });
 
+// 5. Get Tenant Branding Configuration (Authenticated)
+app.get('/api/tenant/config', requireDashboardAuth, (req, res) => {
+  db.get("SELECT * FROM tenants WHERE id = ?", [req.tenantId], (err, row) => {
+    if (err || !row) return res.status(404).json({ error: "Tenant config not found." });
+    res.json(row);
+  });
+});
+
+// 5b. Get Public Tenant Branding Configuration (Unauthenticated - for login/signup screens)
+app.get('/api/tenant/config/public', (req, res) => {
+  const tenantId = getTenantFromRequest(req);
+  db.get("SELECT name, logo_url, primary_color, secondary_color FROM tenants WHERE id = ?", [tenantId], (err, row) => {
+    if (err || !row) return res.status(404).json({ error: "Tenant not found." });
+    res.json(row);
+  });
+});
+
 // 5. Locations & Status Management (Syncs with Frontend Polling)
-// SECURITY FIX (H-07): Updated from stale BLR-01 to HYD-01 to match the Hyderabad migration.
 app.get('/api/locations', requireDashboardAuth, (req, res) => {
-  res.json([
-    { location_id: "HYD-01", name: "HYD-01", latitude: 17.3850, longitude: 78.4867, online: true, last_seen: new Date().toISOString() }
-  ]);
+  db.get("SELECT * FROM tenants WHERE id = ?", [req.tenantId], (err, tenant) => {
+    if (err || !tenant) return res.status(500).json({ error: "Failed to load location metadata." });
+    
+    const locId = tenant.id.toUpperCase() + "-01";
+    res.json([
+      { 
+        location_id: locId, 
+        name: locId, 
+        latitude: tenant.latitude, 
+        longitude: tenant.longitude, 
+        address: tenant.address,
+        online: true, 
+        last_seen: new Date().toISOString() 
+      }
+    ]);
+  });
 });
 
 app.get('/api/locations/status', requireDashboardAuth, (req, res) => {
-  res.json([
-    { location_id: "HYD-01", name: "HYD-01", latitude: 17.3850, longitude: 78.4867, online: true, last_seen: new Date().toISOString() }
-  ]);
+  db.get("SELECT * FROM tenants WHERE id = ?", [req.tenantId], (err, tenant) => {
+    if (err || !tenant) return res.status(500).json({ error: "Failed to load location status." });
+    
+    const locId = tenant.id.toUpperCase() + "-01";
+    res.json([
+      { 
+        location_id: locId, 
+        name: locId, 
+        latitude: tenant.latitude, 
+        longitude: tenant.longitude, 
+        address: tenant.address,
+        online: true, 
+        last_seen: new Date().toISOString() 
+      }
+    ]);
+  });
 });
 
 app.get('/api/location/:name/capabilities', requireDashboardAuth, (req, res) => {
-  // SECURITY FIX (L-07): Validate location name parameter
-  const validLocations = ['HYD-01', 'HYD-02', 'HYD-03'];
-  if (!validLocations.includes(req.params.name)) {
+  // Build valid location ID from the tenant (e.g. FERN-01, TRIFECTA-01)
+  const tenantLocId = req.tenantId.toUpperCase() + '-01';
+  const name = req.params.name;
+  // Accept either the dynamic tenant location OR a generic HYD- prefix for legacy clients
+  if (name !== tenantLocId && !name.match(/^HYD-0[1-3]$/)) {
     return res.status(404).json({ error: 'Unknown location.' });
   }
   res.json({ has_aqi: true, has_water: true });
 });
 
-// 6. Devices Listing — dynamic status from DB timestamps
+// Tenant branding / config endpoint
+app.get('/api/tenant/config', requireDashboardAuth, (req, res) => {
+  db.get('SELECT id, name, primary_color, secondary_color, logo_url, address, latitude, longitude FROM tenants WHERE id = ?', [req.tenantId], (err, tenant) => {
+    if (err || !tenant) return res.status(404).json({ error: 'Tenant config not found.' });
+    res.json(tenant);
+  });
+});
+
+// 6. Devices Listing — dynamic status from DB timestamps, scoped to tenant
 app.get('/api/devices', requireDashboardAuth, (req, res) => {
   const ONLINE_THRESHOLD_MS = 30000; // 30 seconds
+  const tenantLocId = req.tenantId.toUpperCase() + '-01';
 
-  // Query latest water update and latest AQI entry in parallel
-  db.get("SELECT last_updated FROM borewell_state WHERE id = 'BW-01'", [], (err, bwRow) => {
-    db.get("SELECT timestamp FROM aqi_history ORDER BY id DESC LIMIT 1", [], (err2, aqiRow) => {
+  // Query latest water update and latest AQI entry for this tenant
+  db.get("SELECT last_updated FROM borewell_state WHERE id = 'BW-01' AND tenant_id = ?", [req.tenantId], (err, bwRow) => {
+    db.get("SELECT timestamp FROM aqi_history WHERE tenant_id = ? ORDER BY id DESC LIMIT 1", [req.tenantId], (err2, aqiRow) => {
       const now = Date.now();
 
       // Parse SQLite timestamps (stored as "YYYY-MM-DD HH:MM:SS" in UTC)
@@ -739,12 +846,11 @@ app.get('/api/devices', requireDashboardAuth, (req, res) => {
       const bwLastSeen  = bwLastMs  > 0 ? new Date(bwLastMs).toISOString()  : null;
       const aqiLastSeen = aqiLastMs > 0 ? new Date(aqiLastMs).toISOString() : null;
 
-      // SECURITY FIX (H-07): Updated from stale BLR-01 to HYD-01
       res.json([
-        { device_id: "BW-GW-01",   type: "GATEWAY", status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: bwLastSeen  },
-        { device_id: "BW-NODE-01", type: "SENSOR",  status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: bwLastSeen  },
-        { device_id: "AQI-NODE-01",type: "SENSOR",  status: isAqiOnline   ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: aqiLastSeen },
-        { device_id: "LORA-HUB",   type: "BASE",    status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: "HYD-01", location_name: "HYD-01", last_seen: bwLastSeen  }
+        { device_id: `BW-GW-${req.tenantId.toUpperCase()}`,   type: "GATEWAY", status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: bwLastSeen  },
+        { device_id: `BW-NODE-${req.tenantId.toUpperCase()}`,  type: "SENSOR",  status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: bwLastSeen  },
+        { device_id: `AQI-NODE-${req.tenantId.toUpperCase()}`, type: "SENSOR",  status: isAqiOnline   ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: aqiLastSeen },
+        { device_id: `LORA-HUB-${req.tenantId.toUpperCase()}`, type: "BASE",    status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: bwLastSeen  }
       ]);
     });
   });
@@ -860,42 +966,49 @@ function broadcast(data) {
 const simulateHardware = () => {
   console.log("🛠️ Starting Hardware Simulator...");
   setInterval(() => {
-    // 1. Simulate Water/Borewell Data
-    for (let i = 1; i <= 3; i++) {
-      const mockWaterData = {
-        location_id: "default",
-        device_id: `borewell-${i}`,
-        type: 'water',
+    ['fern', 'trifecta'].forEach(tenantId => {
+      // 1. Simulate Water/Borewell Data
+      for (let i = 1; i <= 3; i++) {
+        const mockWaterData = {
+          location_id: `${tenantId.toUpperCase()}-01`,
+          device_id: `BW-0${i}`,
+          tenant_id: tenantId,
+          type: 'water',
+          timestamp: new Date().toISOString(),
+          isMotorOn: Math.random() > 0.5,
+          data: {
+            flowRate: (40 + Math.random() * 10).toFixed(1),
+            efficiency: (70 + Math.random() * 10).toFixed(0),
+            voltage: (230 + Math.random() * 5).toFixed(0),
+            current: (8 + Math.random() * 2).toFixed(1),
+            runTime: (4.5 + Math.random() * 0.1).toFixed(2),
+            waterLevel: (50 + Math.sin(Date.now() / 10000) * 5).toFixed(1),
+            ph: (7.2 + Math.sin(Date.now() / 5000) * 0.2).toFixed(2),
+            tds: (220 + Math.random() * 15).toFixed(1),
+            turbidity: (1.2 + Math.random() * 0.3).toFixed(2)
+          }
+        };
+        broadcast(mockWaterData);
+      }
+
+      // 2. Simulate AQI Data
+      const mockAqiData = {
+        type: 'aqi',
+        tenant_id: tenantId,
         timestamp: new Date().toISOString(),
         data: {
-          flowRate: (40 + Math.random() * 10).toFixed(1),
-          efficiency: (70 + Math.random() * 10).toFixed(0),
-          voltage: (230 + Math.random() * 5).toFixed(0),
-          current: (8 + Math.random() * 2).toFixed(1),
-          runTime: (4.5 + Math.random() * 0.1).toFixed(2),
-          waterLevel: (50 + Math.sin(Date.now() / 10000) * 5).toFixed(1)
+          pm25: (10 + Math.random() * 5).toFixed(1),
+          pm10: (20 + Math.random() * 10).toFixed(1),
+          co2: (400 + Math.random() * 50).toFixed(0),
+          tvoc: (0.1 + Math.random() * 0.05).toFixed(3),
+          hcho: (0.02 + Math.random() * 0.01).toFixed(3),
+          temp: (24 + Math.random() * 2).toFixed(1),
+          humidity: (55 + Math.random() * 5).toFixed(0),
+          aqi: (90 + Math.random() * 5).toFixed(0)
         }
       };
-      broadcast(mockWaterData);
-    }
-
-    // 2. Simulate AQI Data
-    const mockAqiData = {
-      type: 'aqi',
-      timestamp: new Date().toISOString(),
-      data: {
-        pm25: (10 + Math.random() * 5).toFixed(1),
-        pm10: (20 + Math.random() * 10).toFixed(1),
-        co2: (400 + Math.random() * 50).toFixed(0),
-        tvoc: (0.1 + Math.random() * 0.05).toFixed(3),
-        hcho: (0.02 + Math.random() * 0.01).toFixed(3),
-        temp: (24 + Math.random() * 2).toFixed(1),
-        humidity: (55 + Math.random() * 5).toFixed(0),
-        aqi: (90 + Math.random() * 5).toFixed(0)
-      }
-    };
-    broadcast(mockAqiData);
-
+      broadcast(mockAqiData);
+    });
   }, 5000); // 5 second intervals to match ESP32
 };
 

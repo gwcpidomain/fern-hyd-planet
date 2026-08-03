@@ -57,7 +57,7 @@ export default function LoginPage() {
       {/* Auth Card Container */}
       <div className="relative z-10 w-full max-w-[390px] mx-4 animate-in fade-in zoom-in duration-500">
         
-        {/* EcoSphere Glassmorphic Form Card */}
+        {/* Glassmorphic Form Card */}
         <div className="bg-slate-950/80 border border-emerald-500/20 backdrop-blur-2xl rounded-3xl p-8 shadow-[0_0_50px_rgba(16,185,129,0.1)]">
           
           {/* Top Pulsing Green Dot */}
@@ -98,7 +98,7 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Password Field */}
+            {/* Security Key Field */}
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
               <input

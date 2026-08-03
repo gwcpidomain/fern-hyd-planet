@@ -73,6 +73,22 @@ function verifyToken(token) {
 }
 
 /**
+ * Helper to dynamically extract the tenant identifier from the request headers or host name.
+ */
+function getTenantFromRequest(req) {
+    const headerTenant = req.headers['x-tenant-id'];
+    if (headerTenant) return headerTenant;
+
+    const host = req.headers.host || '';
+    const parts = host.split('.');
+    if (parts.length > 2) {
+        const subdomain = parts[0];
+        if (subdomain !== 'www') return subdomain;
+    }
+    return 'fern'; // default fallback
+}
+
+/**
  * Middleware: Require a valid bearer token for dashboard endpoints.
  * Used on: GET /api/borewells, GET /api/history/:id, POST /api/control, etc.
  */
@@ -84,6 +100,7 @@ function requireDashboardAuth(req, res, next) {
                 console.warn('⚠️  DASHBOARD_TOKEN not set — dashboard authentication DISABLED. Set this env var in production!');
                 dashboardAuthWarned = true;
             }
+            req.tenantId = getTenantFromRequest(req);
             return next();
         }
         return res.status(401).json({ error: 'Missing or invalid Authorization header. Expected: Bearer <token>' });
@@ -93,17 +110,19 @@ function requireDashboardAuth(req, res, next) {
 
     // 1. Direct environment variable token match (fallback/automated requests)
     if (DASHBOARD_TOKEN && token === DASHBOARD_TOKEN) {
+        req.tenantId = getTenantFromRequest(req);
         return next();
     }
 
     // 2. Cryptographic session token verification
     const session = verifyToken(token);
     if (session) {
-        db.get('SELECT id, email, full_name FROM users WHERE id = ?', [session.userId], (err, user) => {
+        db.get('SELECT id, email, full_name, tenant_id FROM users WHERE id = ?', [session.userId], (err, user) => {
             if (err || !user) {
                 return res.status(403).json({ error: 'Access denied: User account not found.' });
             }
             req.user = user;
+            req.tenantId = user.tenant_id;
             next();
         });
         return;
@@ -117,7 +136,9 @@ function requireDashboardAuth(req, res, next) {
         const password = decoded[1];
 
         if (email && password) {
-            db.get('SELECT id, email, password, full_name FROM users WHERE email = ?', [email], (err, user) => {
+            // Find user matched to the subdomain's tenant space
+            const targetTenant = getTenantFromRequest(req);
+            db.get('SELECT id, email, password, full_name, tenant_id FROM users WHERE email = ? AND tenant_id = ?', [email, targetTenant], (err, user) => {
                 if (err || !user) {
                     return res.status(403).json({ error: 'Access denied: Invalid credentials.' });
                 }
@@ -140,7 +161,8 @@ function requireDashboardAuth(req, res, next) {
                     return res.status(403).json({ error: 'Access denied: Incorrect password.' });
                 }
                 
-                req.user = { id: user.id, email: user.email, full_name: user.full_name };
+                req.user = { id: user.id, email: user.email, full_name: user.full_name, tenant_id: user.tenant_id };
+                req.tenantId = user.tenant_id;
                 next();
             });
             return;
@@ -152,4 +174,4 @@ function requireDashboardAuth(req, res, next) {
     return res.status(403).json({ error: 'Malformed or expired access token.' });
 }
 
-module.exports = { requireApiKey, requireDashboardAuth, verifyToken };
+module.exports = { requireApiKey, requireDashboardAuth, verifyToken, getTenantFromRequest };

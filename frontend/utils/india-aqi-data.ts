@@ -53,6 +53,8 @@ export const CITY_AQI: Record<string, { city: string; state: string; aqi: number
   "HYD-03": { city: "Hyderabad", state: "Telangana", aqi: 75 },
   "DEL-01": { city: "Delhi", state: "Delhi", aqi: 285 },
   "MUM-01": { city: "Mumbai", state: "Maharashtra", aqi: 115 },
+  "FERN-01": { city: "Hyderabad", state: "Telangana", aqi: 78 },
+  "TRIFECTA-01": { city: "Bengaluru", state: "Karnataka", aqi: 85 }
 }
 
 export function getIndianStateAQI(stateName: string): number {

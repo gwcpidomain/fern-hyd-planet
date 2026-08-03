@@ -84,7 +84,7 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
 
       {/* Sidebar Panel */}
       <aside
-        className={`fixed left-0 top-0 z-[200] flex h-screen w-[280px] sm:w-[340px] flex-col border-r border-emerald-500/10 bg-gradient-to-b from-[#0a0f1a]/98 via-[#0d1425]/98 to-[#0a0f1a]/98 shadow-[0_0_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-300 ease-out dark:border-emerald-500/5 ${isOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0"
+        className={`fixed left-0 top-0 z-[200] flex h-screen w-[280px] sm:w-[340px] flex-col border-r border-primary/10 bg-gradient-to-b from-[#0a0f1a]/98 via-[#0d1425]/98 to-[#0a0f1a]/98 shadow-[0_0_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-300 ease-out ${isOpen ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0"
           }`}
       >
         {/* Header */}
@@ -124,11 +124,11 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
                   <button
                     onClick={() => handleNavClick(item.id)}
                     className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-all duration-300 ${isActive
-                      ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/10 text-white"
+                      ? "bg-gradient-to-r from-primary/20 to-secondary/10 text-white"
                       : "text-slate-400 hover:bg-white/5 hover:text-white"
                       }`}
                   >
-                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-300 ${isActive ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-slate-500 group-hover:bg-white/10 group-hover:text-white"}`}>
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-300 ${isActive ? "bg-primary/20 text-primary" : "bg-white/5 text-slate-500 group-hover:bg-white/10 group-hover:text-white"}`}>
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
@@ -158,7 +158,7 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
         {/* User Footer */}
         <div className="border-t border-white/10 p-4 dark:border-white/5 bg-black/20">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-xs font-bold text-white uppercase">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-xs font-bold text-slate-950 uppercase">
               {user?.full_name?.[0] || user?.email?.[0] || "U"}
             </div>
             <div className="flex-1 min-w-0">
