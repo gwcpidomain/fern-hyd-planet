@@ -29,20 +29,44 @@ app.use(helmet());
 const corsOrigin = process.env.CORS_ORIGIN;
 let originOption = false;
 
-if (corsOrigin) {
-  originOption = corsOrigin.split(',');
-} else if (process.env.NODE_ENV !== 'production') {
-  // Allow local development origins (including subdomains of localhost)
-  originOption = (origin, callback) => {
-    if (!origin || origin.indexOf('localhost') !== -1 || origin.indexOf('127.0.0.1') !== -1) {
+originOption = (origin, callback) => {
+  if (!origin) {
+    return callback(null, true);
+  }
+
+  const isLocal = origin.indexOf('localhost') !== -1 || origin.indexOf('127.0.0.1') !== -1;
+  if (process.env.NODE_ENV !== 'production' && isLocal) {
+    return callback(null, true);
+  }
+
+  try {
+    const parsedUrl = new URL(origin);
+    const hostname = parsedUrl.hostname;
+
+    // Check if the domain is gwcinsights.com, its www variant, or any subdomain
+    const isGwcinsightsDomain = hostname === 'gwcinsights.com' || 
+                                hostname === 'www.gwcinsights.com' ||
+                                hostname.endsWith('.gwcinsights.com');
+
+    // Also support any explicitly listed origins in CORS_ORIGIN
+    const isExplicitlyAllowed = corsOrigin && corsOrigin.split(',').some(allowedOrigin => {
+      try {
+        return new URL(allowedOrigin.trim()).hostname === hostname;
+      } catch (e) {
+        return allowedOrigin.trim() === origin;
+      }
+    });
+
+    if (isGwcinsightsDomain || isExplicitlyAllowed) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS in development'));
+      console.warn(`🚫 CORS Rejected: Origin ${origin} is not allowed.`);
+      callback(new Error('Not allowed by CORS'));
     }
-  };
-} else {
-  console.warn('⚠️  CORS_ORIGIN not set — CORS will deny cross-origin requests. Set this env var in production.');
-}
+  } catch (err) {
+    callback(new Error('Invalid origin format'));
+  }
+};
 
 const corsOptions = {
   origin: originOption,
