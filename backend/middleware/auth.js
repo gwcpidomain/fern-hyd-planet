@@ -55,22 +55,7 @@ function requireApiKey(req, res, next) {
 
 const db = require('../db');
 const crypto = require('crypto');
-
-const { SESSION_SECRET: secret } = require('../config');
-
-function verifyToken(token) {
-  try {
-    const raw = Buffer.from(token, 'base64').toString('ascii');
-    const [payloadStr, signature] = raw.split('.');
-    const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
-    if (signature !== expectedSignature) return null;
-    const payload = JSON.parse(payloadStr);
-    if (Date.now() > payload.expires) return null;
-    return payload;
-  } catch (e) {
-    return null;
-  }
-}
+const { verifyToken } = require('../utils/crypto');
 
 /**
  * Helper to dynamically extract the tenant identifier from the request headers or host name.

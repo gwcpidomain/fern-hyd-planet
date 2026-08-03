@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const db = require('./db');
 const { requireApiKey, requireDashboardAuth } = require('./middleware/auth');
+const { hashPassword, generateToken, verifyToken } = require('./utils/crypto');
 const { 
   safeFloat, 
   validateWaterPayload, 
@@ -94,15 +95,19 @@ app.get('/api/borewells', requireDashboardAuth, (req, res) => {
 // 2. Get Historical Data (For Trend Graphs) — scoped to active tenant
 app.get('/api/history/:id', requireDashboardAuth, (req, res) => {
   const { id } = req.params;
-  // SECURITY FIX (M-01): Whitelist borewell IDs to prevent enumeration
-  const validIds = ['BW-01', 'BW-02', 'BW-03'];
-  if (!validIds.includes(id)) {
-    return res.status(400).json({ error: `Invalid borewell ID "${id}". Valid IDs: ${validIds.join(', ')}` });
-  }
   const limit = parseInt(req.query.limit, 10) || 50; // Last 50 points
-  db.all("SELECT * FROM readings_history WHERE borewell_id = ? AND tenant_id = ? ORDER BY timestamp DESC LIMIT ?", [id, req.tenantId, limit], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows.reverse()); // Return in chronological order
+
+  // DYNAMIC WHITELIST FIX: Verify borewell exists for active tenant in DB instead of static array
+  db.get("SELECT id FROM borewell_state WHERE id = ? AND tenant_id = ?", [id, req.tenantId], (checkErr, validBorewell) => {
+    if (checkErr) return res.status(500).json({ error: checkErr.message });
+    if (!validBorewell) {
+      return res.status(400).json({ error: `Invalid or unauthorized borewell ID "${id}" for tenant "${req.tenantId}".` });
+    }
+
+    db.all("SELECT * FROM readings_history WHERE borewell_id = ? AND tenant_id = ? ORDER BY timestamp DESC LIMIT ?", [id, req.tenantId, limit], (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json(rows.reverse()); // Return in chronological order
+    });
   });
 });
 
@@ -255,14 +260,21 @@ app.post('/api/control', requireDashboardAuth, validateControlPayload, (req, res
 function handleWaterPush(tenantId, payload, res) {
   const id = payload.id || 'BW-01';
 
-  // Retrieve current row values to prevent partial updates from clearing other sensors
-  db.get("SELECT * FROM borewell_state WHERE id = ? AND tenant_id = ?", [id, tenantId], (err, row) => {
-    if (err) {
-      console.error("DB read error during ingestion:", err.message);
-      return res.status(500).json({ error: err.message });
+  // Verify that target tenant exists in the database
+  db.get("SELECT id FROM tenants WHERE id = ?", [tenantId], (tenantErr, tenantRow) => {
+    if (tenantErr || !tenantRow) {
+      console.warn(`🚫 Ingestion rejected: Unknown tenant '${tenantId}'`);
+      return res.status(400).json({ error: `Workspace/tenant '${tenantId}' does not exist.` });
     }
-    
-    const current_state = row || {};
+
+    // Retrieve current row values to prevent partial updates from clearing other sensors
+    db.get("SELECT * FROM borewell_state WHERE id = ? AND tenant_id = ?", [id, tenantId], (err, row) => {
+      if (err) {
+        console.error("DB read error during ingestion:", err.message);
+        return res.status(500).json({ error: err.message });
+      }
+      
+      const current_state = row || {};
     
     // Parse values from payload safely using safeFloat validator helper (Finding 5.4)
     const rawFlow = payload.flow_rate !== undefined ? payload.flow_rate : (payload.flow_lpm !== undefined ? payload.flow_lpm : (payload.flow !== undefined ? payload.flow : null));
@@ -402,6 +414,7 @@ function handleWaterPush(tenantId, payload, res) {
       }
     );
   });
+  });
 }
 
 // 5a. Receive Data from Heltec Gateway — tenant-scoped route (preferred)
@@ -486,6 +499,13 @@ function normalizeAqiPayload(raw) {
 function handleAqiPush(tenantId, body, res) {
   const { pm25, pm10, co2, tvoc, hcho, temp, humidity } = body;
 
+  // Verify that target tenant exists in the database
+  db.get("SELECT id FROM tenants WHERE id = ?", [tenantId], (tenantErr, tenantRow) => {
+    if (tenantErr || !tenantRow) {
+      console.warn(`🚫 AQI Ingestion rejected: Unknown tenant '${tenantId}'`);
+      return res.status(400).json({ error: `Workspace/tenant '${tenantId}' does not exist.` });
+    }
+
   
   // Safe parsing values
   const safePm25 = safeFloat(pm25, 0);
@@ -542,6 +562,7 @@ function handleAqiPush(tenantId, body, res) {
       });
     }
   );
+  });
 }
 
 // AQI — tenant-scoped route (preferred)
@@ -567,32 +588,6 @@ app.post('/api/aqi', requireApiKey, (req, res, next) => {
 
 const crypto = require('crypto');
 const { SESSION_SECRET: secret } = require('./config');
-
-function hashPassword(password, salt) {
-  const finalSalt = salt || crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, finalSalt, 10000, 64, 'sha512').toString('hex');
-  return `${finalSalt}:${hash}`;
-}
-
-function generateToken(userId, email, tenantId) {
-  const payload = JSON.stringify({ userId, email, tenantId, expires: Date.now() + 24 * 3600 * 1000 });
-  const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
-  return Buffer.from(`${payload}.${signature}`).toString('base64');
-}
-
-function verifyToken(token) {
-  try {
-    const raw = Buffer.from(token, 'base64').toString('ascii');
-    const [payloadStr, signature] = raw.split('.');
-    const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
-    if (signature !== expectedSignature) return null;
-    const payload = JSON.parse(payloadStr);
-    if (Date.now() > payload.expires) return null;
-    return payload;
-  } catch (e) {
-    return null;
-  }
-}
 
 // Helper to resolve tenant ID from incoming HTTP request headers or hostnames
 function getTenantFromRequest(req) {

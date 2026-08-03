@@ -13,12 +13,7 @@ console.log('💾 Using local SQLite (ephemeral on Render free tier — set TURS
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const crypto = require('crypto');
-
-function hashPassword(password, salt) {
-  const finalSalt = salt || crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, finalSalt, 10000, 64, 'sha512').toString('hex');
-  return `${finalSalt}:${hash}`;
-}
+const { hashPassword } = require('./utils/crypto');
 
 const dbPath = process.env.SQLITE_DB_PATH || path.join(__dirname, 'environment.db');
 const db = new sqlite3.Database(dbPath);

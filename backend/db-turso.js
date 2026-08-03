@@ -15,13 +15,7 @@
 
 const { createClient } = require('@libsql/client');
 const crypto = require('crypto');
-
-// ─── Password helper (mirrors db.js) ──────────────────────────────────────────
-function hashPassword(password, salt) {
-  const finalSalt = salt || crypto.randomBytes(16).toString('hex');
-  const hash = crypto.pbkdf2Sync(password, finalSalt, 10000, 64, 'sha512').toString('hex');
-  return `${finalSalt}:${hash}`;
-}
+const { hashPassword } = require('./utils/crypto');
 
 // ─── Row converter ────────────────────────────────────────────────────────────
 // Turso returns Row objects (not plain objects). Integer columns may be BigInt.
