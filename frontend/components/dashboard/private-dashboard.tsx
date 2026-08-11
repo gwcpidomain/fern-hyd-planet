@@ -1216,6 +1216,7 @@ export function PrivateDashboard() {
                                             }}
                                             maxWaterLevel={10}
                                             waterStatus={isMotorOn ? "ACTIVE" : "STANDBY"}
+                                            isMotorOn={isMotorOn}
                                         />
                                     </ErrorBoundary>
                                 </div>

@@ -98,12 +98,14 @@ export function SpeedometerGauge({
   status,
   irms = 0,
   pumpStatus = 'N/A',
+  isMotorOn = false,
 }: {
   value: number
   maxValue: number
   status?: string
   irms?: number
   pumpStatus?: string
+  isMotorOn?: boolean
 }) {
   const maxAmps = 15;
   // Guard: irms may arrive as null/undefined from DB — coerce to safe number
@@ -121,17 +123,27 @@ export function SpeedometerGauge({
   const statusToRatio: Record<string, number> = {
     "OFF": 0.125,
     "CHARGING": 0.125,
+    "CRITICAL": 0.30,  // Added: below 4A but motor running
     "LOW": 0.375,
     "MID": 0.625,
     "HIGH": 0.875,
   };
 
-  // Priority: use the status string from pump monitor, fallback to current load ratio
-  const activeStatusStr = (pumpStatus || status || "OFF").toUpperCase();
+  // If motor is confirmed ON (by flow) but amps read below threshold,
+  // override the status so the gauge doesn't show CHARGING/OFF.
+  const resolvedPumpStatus = (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
+    ? 'LOW'
+    : (pumpStatus || status || 'OFF');
+
+  // Priority: use the resolved status string from pump monitor, fallback to current load ratio
+  const activeStatusStr = resolvedPumpStatus.toUpperCase();
   const ratio = statusToRatio[activeStatusStr] ?? (safeIrms / maxAmps);
 
   const activeZone = zones.find(z => ratio >= z.from && ratio < z.to) || zones[zones.length - 1];
-  const activeStatus = activeStatusStr;
+  // When motor is on but status is overridden, display ON instead of LOW
+  const activeStatus = (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
+    ? 'ON'
+    : activeStatusStr;
 
   // Needle angle: semi-circle from 180° (left) to 0° (right)
   const needleAngle = 180 - (ratio * 180);
