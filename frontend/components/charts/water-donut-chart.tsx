@@ -66,9 +66,10 @@ export const WaterDonutChart = memo(function WaterDonutChart({ waterData, transp
             },
             {
                 name: "Turbidity",
-                value: Math.max(0, 100 - (turbidityValue * 20)),
+                // NTU scoring: 0 NTU = 100 score, 100 NTU = 0 score (linear, WHO threshold ~4 NTU for drinking)
+                value: Math.max(0, Math.min(100, 100 - (turbidityValue / 10))),
                 chartValue: 25,
-                rawValue: turbidityValue,
+                rawValue: Math.min(turbidityValue, 999), // Cap display at 999 (sensor max clamp artifact)
                 unit: "NTU",
                 color: "#a855f7"
             },
@@ -99,8 +100,10 @@ export const WaterDonutChart = memo(function WaterDonutChart({ waterData, transp
                     {/* Center Text */}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 translate-y-[2%]">
                         <span className="text-2xl font-bold text-white drop-shadow-[0_0_10px_rgba(0,0,0,0.5)] transition-transform duration-500">
-                            {activeItem.name === "pH Balance" || activeItem.name === "Turbidity" 
-                                ? activeItem.rawValue.toFixed(1) 
+                            {activeItem.name === "pH Balance"
+                                ? activeItem.rawValue.toFixed(1)
+                                : activeItem.name === "Turbidity"
+                                ? Math.round(activeItem.rawValue)
                                 : Math.round(activeItem.rawValue)}
                         </span>
                         <span className="text-[9px] uppercase font-black tracking-widest" style={{ color: activeItem.color }}>
