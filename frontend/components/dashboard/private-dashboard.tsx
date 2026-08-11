@@ -547,7 +547,14 @@ export function PrivateDashboard() {
 
             // 1. Process status updates for ALL borewells so their states remain correct
             // Force motor state to OFF if a zero-value packet is received
-            const isIncomingMotorOn = !isZeroWater && (incoming.status === 'ON' || (incomingIrms !== undefined && incomingIrms > 1.1));
+            const isIncomingMotorOn = !isZeroWater && (
+                (wsData as any).isMotorOn === true ||
+                incoming.isMotorOn === true ||
+                (incoming.flowRate !== undefined && incoming.flowRate > 5.0) ||
+                (incoming.flow !== undefined && incoming.flow > 5.0) ||
+                incoming.status === 'ON' ||
+                (incomingIrms !== undefined && incomingIrms > 1.1)
+            );
             if (hasPumpData || isZeroWater) {
                 setBorewells(prev => prev.map(bw => {
                     if (bw.id === incomingId) {
