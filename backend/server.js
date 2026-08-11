@@ -377,8 +377,10 @@ function handleWaterPush(tenantId, payload, res) {
     const turbidity_status = isZeroWaterPayload ? (current_state.turbidity_status || 'CLEAR') : (payload.turbidity_status !== undefined ? payload.turbidity_status : (current_state.turbidity_status !== undefined ? current_state.turbidity_status : 'CLEAR'));
     const tds_status = isZeroWaterPayload ? (current_state.tds_status || 'GOOD') : (payload.tds_status !== undefined ? payload.tds_status : (current_state.tds_status !== undefined ? current_state.tds_status : 'GOOD'));
 
-    // Derive motor status: ON if current (amps) > 1.1A, else OFF
-    const is_motor_on = a > 1.1 ? 1 : 0;
+    // Derive motor status: ON if current (amps) > 1.1A OR flow rate > 5 LPM.
+    // Flow rate is used as secondary confirmation because CT sensors can read
+    // below threshold at low loads, yet the pump is physically running (proven by flow).
+    const is_motor_on = (a > 1.1 || flow > 5.0) ? 1 : 0;
 
     // Perform database UPDATE of live state — scoped to tenant
     db.run(`UPDATE borewell_state SET 
