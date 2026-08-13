@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState, useCallback } from "react"
 import { apiClient } from "@/lib/api"
@@ -71,7 +71,7 @@ function timeAgo(isoString: string): string {
 }
 
 interface WeatherWidgetProps {
-  token: string
+  token: string | null
 }
 
 export function WeatherWidget({ token }: WeatherWidgetProps) {
@@ -81,6 +81,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
   const [tick, setTick] = useState(0) // for live "X min ago" display
 
   const fetchWeather = useCallback(async () => {
+    if (!token) return
     try {
       const data = await apiClient<WeatherData>("/api/weather", { token, showErrorToast: false })
       setWeather(data)
