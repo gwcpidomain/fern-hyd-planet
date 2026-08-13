@@ -18,6 +18,12 @@ const { startTuyaPoller } = require('./tuyaService');
 
 const app = express();
 
+// Ensure dynamic coordinates update on startup (updates both local SQLite and cloud Turso)
+db.run("UPDATE tenants SET latitude = 17.177306, longitude = 78.470667 WHERE id = 'fern'", (err) => {
+  if (err) console.error("⚠️ Failed to update Fern location coordinates:", err.message);
+  else console.log("📍 Fern location coordinates updated successfully to 17.177306, 78.470667");
+});
+
 // SECURITY FIX (H-08): Trust first proxy hop (Render's load balancer) for correct req.ip
 app.set('trust proxy', 1);
 

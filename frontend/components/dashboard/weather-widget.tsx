@@ -184,10 +184,10 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
 
           {/* Row 1: Wind */}
           <div className="flex items-center gap-1.5">
-            <Wind className="h-3 w-3 text-cyan-400 shrink-0" />
+            <Wind className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
             <div className="flex flex-col leading-tight">
-              <span className="text-[8.5px] 2xl:text-[9px] text-slate-500 uppercase tracking-wide">Wind</span>
-              <span className="text-[10px] 2xl:text-[11px] font-bold text-white whitespace-nowrap">
+              <span className="text-[9.5px] 2xl:text-[10px] text-slate-500 uppercase tracking-wide">Wind</span>
+              <span className="text-[12px] 2xl:text-[13px] font-black text-white whitespace-nowrap">
                 {weather.wind_kph?.toFixed(0)} km/h {weather.wind_dir}
               </span>
             </div>
@@ -195,19 +195,19 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
 
           {/* Row 1: Humidity */}
           <div className="flex items-center gap-1.5">
-            <Droplets className="h-3 w-3 text-blue-400 shrink-0" />
+            <Droplets className="h-3.5 w-3.5 text-blue-400 shrink-0" />
             <div className="flex flex-col leading-tight">
-              <span className="text-[8.5px] 2xl:text-[9px] text-slate-500 uppercase tracking-wide">Humidity</span>
-              <span className="text-[10px] 2xl:text-[11px] font-bold text-white">{weather.humidity}%</span>
+              <span className="text-[9.5px] 2xl:text-[10px] text-slate-500 uppercase tracking-wide">Humidity</span>
+              <span className="text-[12px] 2xl:text-[13px] font-black text-white">{weather.humidity}%</span>
             </div>
           </div>
 
           {/* Row 1: UV Index */}
           <div className="flex items-center gap-1.5">
-            <Sun className="h-3 w-3 shrink-0" style={{ color: uvInfo.color }} />
+            <Sun className="h-3.5 w-3.5 shrink-0" style={{ color: uvInfo.color }} />
             <div className="flex flex-col leading-tight">
-              <span className="text-[8.5px] 2xl:text-[9px] text-slate-500 uppercase tracking-wide">UV Index</span>
-              <span className="text-[10px] 2xl:text-[11px] font-bold whitespace-nowrap" style={{ color: uvInfo.color }}>
+              <span className="text-[9.5px] 2xl:text-[10px] text-slate-500 uppercase tracking-wide">UV Index</span>
+              <span className="text-[12px] 2xl:text-[13px] font-black whitespace-nowrap" style={{ color: uvInfo.color }}>
                 {weather.uv} — {uvInfo.label}
               </span>
             </div>
@@ -215,28 +215,28 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
 
           {/* Row 2: Rain Today */}
           <div className="flex items-center gap-1.5">
-            <CloudRain className="h-3 w-3 text-indigo-400 shrink-0" />
+            <CloudRain className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
             <div className="flex flex-col leading-tight">
-              <span className="text-[8.5px] 2xl:text-[9px] text-slate-500 uppercase tracking-wide">Rain Today</span>
-              <span className="text-[10px] 2xl:text-[11px] font-bold text-white">{weather.precip_mm?.toFixed(1)} mm</span>
+              <span className="text-[9.5px] 2xl:text-[10px] text-slate-500 uppercase tracking-wide">Rain Today</span>
+              <span className="text-[12px] 2xl:text-[13px] font-black text-white">{weather.precip_mm?.toFixed(1)} mm</span>
             </div>
           </div>
 
           {/* Row 2: Visibility */}
           <div className="flex items-center gap-1.5">
-            <Eye className="h-3 w-3 text-slate-400 shrink-0" />
+            <Eye className="h-3.5 w-3.5 text-slate-400 shrink-0" />
             <div className="flex flex-col leading-tight">
-              <span className="text-[8.5px] 2xl:text-[9px] text-slate-500 uppercase tracking-wide">Visibility</span>
-              <span className="text-[10px] 2xl:text-[11px] font-bold text-white">{weather.vis_km?.toFixed(0)} km</span>
+              <span className="text-[9.5px] 2xl:text-[10px] text-slate-500 uppercase tracking-wide">Visibility</span>
+              <span className="text-[12px] 2xl:text-[13px] font-black text-white">{weather.vis_km?.toFixed(0)} km</span>
             </div>
           </div>
 
           {/* Row 2: Pressure */}
           <div className="flex items-center gap-1.5">
-            <Gauge className="h-3 w-3 text-purple-400 shrink-0" />
+            <Gauge className="h-3.5 w-3.5 text-purple-400 shrink-0" />
             <div className="flex flex-col leading-tight">
-              <span className="text-[8.5px] 2xl:text-[9px] text-slate-500 uppercase tracking-wide">Pressure</span>
-              <span className="text-[10px] 2xl:text-[11px] font-bold text-white">{weather.pressure_mb?.toFixed(0)} mb</span>
+              <span className="text-[9.5px] 2xl:text-[10px] text-slate-500 uppercase tracking-wide">Pressure</span>
+              <span className="text-[12px] 2xl:text-[13px] font-black text-white">{weather.pressure_mb?.toFixed(0)} mb</span>
             </div>
           </div>
         </div>

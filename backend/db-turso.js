@@ -232,7 +232,7 @@ async function initSchema(client) {
   if (Number(tenantRow.rows[0].cnt) === 0) {
     await client.batch([
       {
-        sql: "INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('fern', 'Fern Insights', '/logo.png', '#10b981', '#06b6d4', 17.3850, 78.4867, 'Sy 438,439, Fern Villas, Srisailam Hwy, Maheshwaram, Malikdanguda, Maheshwaram, Telangana 501359')",
+        sql: "INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('fern', 'Fern Insights', '/logo.png', '#10b981', '#06b6d4', 17.177306, 78.470667, 'Sy 438,439, Fern Villas, Srisailam Hwy, Maheshwaram, Malikdanguda, Maheshwaram, Telangana 501359')",
         args: []
       },
       {

@@ -157,7 +157,7 @@ function initTables() {
     // Seed default tenants
     db.get("SELECT COUNT(*) as count FROM tenants", (err, row) => {
       if (row && row.count === 0) {
-        db.run("INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('fern', 'Fern Insights', '/logo.png', '#10b981', '#06b6d4', 17.3850, 78.4867, 'Sy 438,439, Fern Villas, Srisailam Hwy, Maheshwaram, Malikdanguda, Maheshwaram, Telangana 501359')");
+        db.run("INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('fern', 'Fern Insights', '/logo.png', '#10b981', '#06b6d4', 17.177306, 78.470667, 'Sy 438,439, Fern Villas, Srisailam Hwy, Maheshwaram, Malikdanguda, Maheshwaram, Telangana 501359')");
         db.run("INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('trifecta', 'Trifecta Insights', '/logo.png', '#3b82f6', '#1d4ed8', 12.9716, 77.5946, 'Trifecta Offices, Outer Ring Road, Bangalore, Karnataka 560103')");
         console.log('✅ Seeded default tenants (fern, trifecta)');
       }
