@@ -17,6 +17,7 @@ import { ChartModal } from "@/components/chart-modal"
 import { AQIPollutantHub } from "@/components/aqi-pollutant-hub"
 import { WaterAnalysisSplit } from "@/components/analysis/water-split"
 import { BorewellHealthIndex } from "@/components/analysis/health-index"
+import { WeatherWidget } from "@/components/dashboard/weather-widget"
 import { BorewellMonitorCard } from "@/components/borewell-monitor-card"
 import { AiSummarizerCard } from "@/components/ai-summarizer-card"
 import dynamic from "next/dynamic"
@@ -1243,16 +1244,10 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* ═══ ROW 2: THE TRENDS ═══ */}
-                                {/* Middle Left: Borewell System Health Index */}
+                                {/* Middle Left: Surrounding Conditions (Weather Widget) */}
                                 <div className="lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
-                                    <ErrorBoundary title="Borewell Health Index">
-                                        <BorewellHealthIndex
-                                            waterData={safeWaterData}
-                                            isMotorOn={isMotorOn}
-                                            leakStatus={isMotorOn ? "Nominal" : "Standby"}
-                                            isOffline={isWaterOffline}
-                                        />
+                                    <ErrorBoundary title="Surrounding Conditions">
+                                        <WeatherWidget token={token} />
                                     </ErrorBoundary>
                                 </div>
 

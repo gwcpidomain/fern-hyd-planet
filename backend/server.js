@@ -843,6 +843,93 @@ app.get('/api/tenant/config', requireDashboardAuth, (req, res) => {
   });
 });
 
+// ── WEATHER ENDPOINT ─────────────────────────────────────────────────────────
+// Fetches live weather + air quality from WeatherAPI.com for the tenant's site.
+// Cached per tenant for 15 minutes to avoid hitting API quota on every dashboard load.
+// Multi-tenant: fern → Hyderabad coords, trifecta → Bangalore coords, etc.
+const weatherCache = new Map(); // { tenantId: { data, fetchedAt } }
+const WEATHER_CACHE_MS = 15 * 60 * 1000; // 15 minutes
+
+app.get('/api/weather', requireDashboardAuth, async (req, res) => {
+  const tenantId = req.tenantId;
+  const cached = weatherCache.get(tenantId);
+
+  // Serve cached response if still fresh (< 15 min old)
+  if (cached && (Date.now() - cached.fetchedAt) < WEATHER_CACHE_MS) {
+    return res.json({ ...cached.data, cached: true });
+  }
+
+  // Get this tenant's coordinates from DB
+  db.get('SELECT latitude, longitude, name FROM tenants WHERE id = ?', [tenantId], async (err, tenant) => {
+    if (err || !tenant) return res.status(500).json({ error: 'Tenant not found.' });
+    if (!tenant.latitude || !tenant.longitude) {
+      return res.status(503).json({ error: 'No coordinates configured for this site. Set latitude/longitude in tenants table.' });
+    }
+
+    const apiKey = process.env.WEATHER_API_KEY;
+    if (!apiKey) {
+      console.warn('⚠️  WEATHER_API_KEY not set — weather endpoint disabled.');
+      return res.status(503).json({ error: 'WEATHER_API_KEY environment variable not set.' });
+    }
+
+    try {
+      const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${tenant.latitude},${tenant.longitude}&aqi=yes`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`WeatherAPI returned ${response.status}: ${errText}`);
+      }
+      const raw = await response.json();
+
+      // Map only the fields we use on the dashboard
+      const shaped = {
+        location: raw.location?.name || tenant.name,
+        region:   raw.location?.region || '',
+        country:  raw.location?.country || '',
+        lat:      raw.location?.lat,
+        lon:      raw.location?.lon,
+        // Current conditions
+        temp_c:       raw.current?.temp_c,
+        feelslike_c:  raw.current?.feelslike_c,
+        condition:    raw.current?.condition?.text || 'N/A',
+        condition_icon: raw.current?.condition?.icon || null,
+        wind_kph:     raw.current?.wind_kph,
+        wind_dir:     raw.current?.wind_dir,
+        humidity:     raw.current?.humidity,
+        uv:           raw.current?.uv,
+        precip_mm:    raw.current?.precip_mm,
+        vis_km:       raw.current?.vis_km,
+        pressure_mb:  raw.current?.pressure_mb,
+        cloud:        raw.current?.cloud,
+        // Air quality (surrounding, from WeatherAPI — distinct from on-site sensor)
+        pm25:      raw.current?.air_quality?.pm2_5,
+        pm10:      raw.current?.air_quality?.pm10,
+        co:        raw.current?.air_quality?.co,
+        no2:       raw.current?.air_quality?.no2,
+        o3:        raw.current?.air_quality?.o3,
+        aqi_index: raw.current?.air_quality?.['us-epa-index'], // 1=Good … 6=Hazardous
+        fetchedAt: new Date().toISOString(),
+        cached: false
+      };
+
+      weatherCache.set(tenantId, { data: shaped, fetchedAt: Date.now() });
+      console.log(`🌤️  Weather updated [tenant=${tenantId}]: ${shaped.temp_c}°C, ${shaped.condition}, UV=${shaped.uv}`);
+      res.json(shaped);
+    } catch (e) {
+      console.error(`❌ WeatherAPI fetch error [tenant=${tenantId}]:`, e.message);
+      // If we have stale data, serve it rather than failing
+      if (cached) {
+        console.log(`   Serving stale weather cache for ${tenantId}`);
+        return res.json({ ...cached.data, cached: true, stale: true });
+      }
+      res.status(503).json({ error: 'Weather service temporarily unavailable.', detail: e.message });
+    }
+  });
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 // 6. Devices Listing — dynamic status from DB timestamps, scoped to tenant
 app.get('/api/devices', requireDashboardAuth, (req, res) => {
   const ONLINE_THRESHOLD_MS = 30000; // 30 seconds
