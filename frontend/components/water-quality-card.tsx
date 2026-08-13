@@ -308,7 +308,7 @@ export function WaterQualityCard({
   const showTiles = !mode || mode === "full"
   const showBar = mode === "bar-only" || ((!mode || mode === "full") && !compact)
   const showLiveChart = mode === "line-only" || ((!mode || mode === "full") && !compact)
-  const cardTitle = mode === "line-only" ? "Water Level Trend" : "Water Quality"
+  const cardTitle = `${cfg.shortLabel || cfg.label} Trend`
 
   const metrics = [
     {
@@ -365,13 +365,13 @@ export function WaterQualityCard({
 
       {!transparent && (
         <div className="relative z-10 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <img
               src="/humidity.png"
               alt="Water Logo"
               className="h-6 object-contain rounded-full"
             />
-            <h2 className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-[15px] font-bold uppercase tracking-[0.2em] text-transparent">
+            <h2 className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-[14px] sm:text-[15px] font-bold uppercase tracking-[0.15em] text-transparent whitespace-nowrap">
               {cardTitle}
             </h2>
           </div>
