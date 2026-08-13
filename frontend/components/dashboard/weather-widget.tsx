@@ -250,19 +250,19 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
             </span>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
-            <div className="flex flex-col items-center bg-white/[0.03] rounded-lg py-0.5 2xl:py-1 px-1 border border-white/[0.04]">
-              <span className="text-[7.5px] 2xl:text-[8px] text-slate-500 uppercase tracking-wide mb-0.5">PM2.5</span>
-              <span className="text-[10px] 2xl:text-[11px] font-black text-white">{weather.pm25?.toFixed(0)}</span>
-              <span className="text-[6.5px] 2xl:text-[7px] text-slate-600">µg/m³</span>
+            <div className="flex items-center justify-center gap-1 bg-white/[0.03] rounded-lg py-1 px-1.5 border border-white/[0.04]">
+              <span className="text-[8.5px] 2xl:text-[9px] font-semibold text-slate-400">PM2.5:</span>
+              <span className="text-[9.5px] 2xl:text-[10px] font-black text-white">{weather.pm25?.toFixed(0)}</span>
+              <span className="text-[7.5px] 2xl:text-[8px] text-slate-500">µg/m³</span>
             </div>
-            <div className="flex flex-col items-center bg-white/[0.03] rounded-lg py-0.5 2xl:py-1 px-1 border border-white/[0.04]">
-              <span className="text-[7.5px] 2xl:text-[8px] text-slate-500 uppercase tracking-wide mb-0.5">PM10</span>
-              <span className="text-[10px] 2xl:text-[11px] font-black text-white">{weather.pm10?.toFixed(0)}</span>
-              <span className="text-[6.5px] 2xl:text-[7px] text-slate-600">µg/m³</span>
+            <div className="flex items-center justify-center gap-1 bg-white/[0.03] rounded-lg py-1 px-1.5 border border-white/[0.04]">
+              <span className="text-[8.5px] 2xl:text-[9px] font-semibold text-slate-400">PM10:</span>
+              <span className="text-[9.5px] 2xl:text-[10px] font-black text-white">{weather.pm10?.toFixed(0)}</span>
+              <span className="text-[7.5px] 2xl:text-[8px] text-slate-500">µg/m³</span>
             </div>
-            <div className="flex flex-col items-center bg-white/[0.03] rounded-lg py-0.5 2xl:py-1 px-1 border border-white/[0.04]" style={{ borderColor: `${aqiInfo.color}30` }}>
-              <span className="text-[7.5px] 2xl:text-[8px] text-slate-500 uppercase tracking-wide mb-0.5">AQI</span>
-              <span className="text-[10px] 2xl:text-[11px] font-black" style={{ color: aqiInfo.color }}>{aqiInfo.label}</span>
+            <div className="flex items-center justify-center gap-1 bg-white/[0.03] rounded-lg py-1 px-1.5 border border-white/[0.04]" style={{ borderColor: `${aqiInfo.color}30` }}>
+              <span className="text-[8.5px] 2xl:text-[9px] font-semibold text-slate-400">AQI:</span>
+              <span className="text-[9.5px] 2xl:text-[10px] font-black whitespace-nowrap" style={{ color: aqiInfo.color }}>{aqiInfo.label}</span>
             </div>
           </div>
         </div>
@@ -270,10 +270,10 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
 
       {/* Footer: timestamp */}
       <div className={`flex items-center justify-between px-3 py-1 border-t border-white/[0.04] shrink-0 ${isStale ? "bg-yellow-500/5" : ""}`}>
-        <span className="text-[8.5px] text-slate-600">
+        <span className="text-[8.5px] font-bold text-slate-400">
           {isStale ? "⚠ Stale data" : "Updated"} {timeAgo(weather.fetchedAt)}
         </span>
-        <span className="text-[8px] text-slate-700 uppercase tracking-wider">WeatherAPI</span>
+        <span className="text-[8px] font-semibold text-slate-600 uppercase tracking-wider">WeatherAPI</span>
       </div>
     </div>
   )
