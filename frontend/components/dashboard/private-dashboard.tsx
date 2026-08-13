@@ -82,14 +82,16 @@ export function PrivateDashboard() {
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; type: 'aqi' | 'water' | null }>({ isOpen: false, type: null });
     const [timeRange, setTimeRange] = useState<"1h" | "24h" | "7d">("1h");
 
+    // Auto-rotate Water Trend tile metric every 2 minutes (Level -> pH -> TDS -> Turbidity -> Flow)
     useEffect(() => {
-        const ranges: Array<"1h" | "24h" | "7d"> = ["1h", "24h", "7d"];
+        const metrics = ["level", "ph", "tds", "turbidity", "flow"];
         const interval = setInterval(() => {
-            setTimeRange((current) => {
-                const nextIndex = (ranges.indexOf(current) + 1) % ranges.length;
-                return ranges[nextIndex];
+            setSelectedWaterMetric((current) => {
+                const active = current || "level";
+                const nextIndex = (metrics.indexOf(active) + 1) % metrics.length;
+                return metrics[nextIndex];
             });
-        }, 15000);
+        }, 120000); // 2 minutes (120,000 ms)
         return () => clearInterval(interval);
     }, []);
 
@@ -1277,8 +1279,6 @@ export function PrivateDashboard() {
                                             onExpand={() => setModalConfig({ isOpen: true, type: 'water' })}
                                             isOffline={isWaterOffline}
                                             mode="line-only"
-                                            timeRange={timeRange}
-                                            onTimeRangeChange={setTimeRange}
                                             isMotorOn={isMotorOn}
                                         />
                                     </ErrorBoundary>

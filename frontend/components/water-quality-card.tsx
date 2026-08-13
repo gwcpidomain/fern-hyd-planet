@@ -48,8 +48,6 @@ interface WaterQualityCardProps {
   isMotorOn?: boolean
   mode?: "full" | "bar-only" | "line-only"
   transparent?: boolean
-  timeRange?: TimeRange
-  onTimeRangeChange?: (range: TimeRange) => void
 }
 
 export function WaterQualityCard({
@@ -61,8 +59,6 @@ export function WaterQualityCard({
   compact = false,
   mode,
   transparent = false,
-  timeRange = "1h",
-  onTimeRangeChange,
   isMotorOn = false
 }: WaterQualityCardProps) {
   const [isVisible, setIsVisible] = useState(false)
