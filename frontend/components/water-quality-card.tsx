@@ -200,11 +200,12 @@ export function WaterQualityCard({
   // ==========================================
   // Determine which metric to show on the live chart
   const chartMetric = activeMetric || "level"
-  const metricConfig: Record<string, { label: string; color: string; bgColor: string; unit: string }> = {
-    level: { label: "Water Level", color: "rgb(34, 211, 238)", bgColor: "rgba(34, 211, 238, 0.1)", unit: "ft" },
-    ph: { label: "pH Level", color: "rgb(74, 222, 128)", bgColor: "rgba(74, 222, 128, 0.1)", unit: "" },
-    tds: { label: "TDS", color: "rgb(251, 191, 36)", bgColor: "rgba(251, 191, 36, 0.1)", unit: "ppm" },
-    turbidity: { label: "Turbidity", color: "rgb(168, 85, 247)", bgColor: "rgba(168, 85, 247, 0.1)", unit: "NTU" },
+  const metricConfig: Record<string, { label: string; shortLabel: string; color: string; bgColor: string; unit: string }> = {
+    level: { label: "Water Level", shortLabel: "Water Level", color: "rgb(34, 211, 238)", bgColor: "rgba(34, 211, 238, 0.1)", unit: "ft" },
+    ph: { label: "pH Level", shortLabel: "pH", color: "rgb(74, 222, 128)", bgColor: "rgba(74, 222, 128, 0.1)", unit: "" },
+    tds: { label: "TDS", shortLabel: "TDS", color: "rgb(251, 191, 36)", bgColor: "rgba(251, 191, 36, 0.1)", unit: "ppm" },
+    turbidity: { label: "Turbidity", shortLabel: "Turbidity", color: "rgb(168, 85, 247)", bgColor: "rgba(168, 85, 247, 0.1)", unit: "NTU" },
+    flow: { label: "Flow Rate", shortLabel: "Flow", color: "rgb(96, 165, 250)", bgColor: "rgba(96, 165, 250, 0.1)", unit: "LPM" },
   }
   const cfg = metricConfig[chartMetric] || metricConfig.level
 
@@ -224,7 +225,8 @@ export function WaterQualityCard({
         level: data.chartData?.level || [],
         ph: data.chartData?.ph || [],
         tds: data.chartData?.tds || [],
-        turbidity: data.chartData?.turbidity || []
+        turbidity: data.chartData?.turbidity || [],
+        flow: (data.chartData as any)?.flowRate || (data.chartData as any)?.flow || []
       };
     }
 
@@ -233,7 +235,8 @@ export function WaterQualityCard({
       level: [],
       ph: [],
       tds: [],
-      turbidity: []
+      turbidity: [],
+      flow: []
     };
   }, [data]);
 
@@ -242,54 +245,14 @@ export function WaterQualityCard({
 
   const liveChartData = {
     labels: timeLabels,
-    datasets: mode === "line-only" ? [
+    datasets: [
       {
-        label: "Water Level (ft)",
-        data: simulatedHistory.level,
-        borderColor: "rgb(34, 211, 238)",
-        backgroundColor: "rgba(34, 211, 238, 0.05)",
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true,
-        pointRadius: 0,
-        pointHoverRadius: 5,
-        pointBackgroundColor: "rgb(34, 211, 238)",
-        yAxisID: 'yLevel',
-      },
-      {
-        label: "pH Level",
-        data: simulatedHistory.ph,
-        borderColor: "rgb(74, 222, 128)",
-        backgroundColor: "rgba(74, 222, 128, 0.05)",
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true,
-        pointRadius: 0,
-        pointHoverRadius: 5,
-        pointBackgroundColor: "rgb(74, 222, 128)",
-        yAxisID: 'yLevel',
-      },
-      {
-        label: "TDS (ppm)",
-        data: simulatedHistory.tds,
-        borderColor: "rgb(251, 191, 36)",
-        backgroundColor: "rgba(251, 191, 36, 0.05)",
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true,
-        pointRadius: 0,
-        pointHoverRadius: 5,
-        pointBackgroundColor: "rgb(251, 191, 36)",
-        yAxisID: 'yTDS',
-      }
-    ] : [
-      {
-        label: cfg.label,
+        label: `${cfg.label} ${cfg.unit ? `(${cfg.unit})` : ''}`,
         data: chartValues,
         borderColor: cfg.color,
         backgroundColor: cfg.bgColor,
         borderWidth: 2,
-        tension: 0.1,
+        tension: 0.3,
         fill: true,
         pointRadius: 0,
         pointHoverRadius: 5,
@@ -304,18 +267,7 @@ export function WaterQualityCard({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: mode === "line-only",
-        position: 'top' as const,
-        labels: {
-          color: '#e2e8f0',
-          boxWidth: 10,
-          usePointStyle: true,
-          pointStyle: 'rectRounded',
-          font: { size: 10, weight: 'normal' as any },
-          padding: 10
-        }
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: "rgba(2, 6, 23, 0.9)",
         titleColor: "#94a3b8",
@@ -323,52 +275,28 @@ export function WaterQualityCard({
         borderColor: "rgba(148, 163, 184, 0.1)",
         borderWidth: 1,
         padding: 8,
-        displayColors: mode === "line-only",
+        displayColors: false,
+        callbacks: {
+          label: (context: any) => `${cfg.label}: ${context.parsed.y?.toFixed(1) ?? 'N/A'} ${cfg.unit}`,
+        }
       },
     },
-    scales: mode === "line-only" ? {
-      x: {
-        ticks: { color: "#475569", font: { size: 9 }, maxTicksLimit: 6 },
-        grid: { display: false },
-        border: { display: false },
-      },
-      yLevel: {
-        type: 'linear' as const,
-        position: 'left' as const,
-        title: {
-          display: true,
-          text: 'Level (ft) / pH',
-          color: '#94a3b8',
-          font: { size: 8, weight: 'bold' }
-        },
-        ticks: { color: "#475569", font: { size: 9 } },
-        beginAtZero: true,
-        grid: { color: "rgba(148, 163, 184, 0.05)" },
-        border: { display: false },
-      },
-      yTDS: {
-        type: 'linear' as const,
-        position: 'right' as const,
-        title: {
-          display: true,
-          text: 'TDS (ppm)',
-          color: '#94a3b8',
-          font: { size: 8, weight: 'bold' }
-        },
-        ticks: { color: "#475569", font: { size: 9 } },
-        beginAtZero: true,
-        grid: { drawOnChartArea: false },
-        border: { display: false },
-      }
-    } : {
+    scales: {
       x: {
         ticks: { color: "#475569", font: { size: 9 }, maxTicksLimit: 6 },
         grid: { display: false },
         border: { display: false },
       },
       y: {
+        title: {
+          display: true,
+          text: `${cfg.label} ${cfg.unit ? `(${cfg.unit})` : ''}`,
+          color: "#64748b",
+          font: { size: 9, weight: "bold" as any }
+        },
         ticks: { color: "#475569", font: { size: 9 } },
-        beginAtZero: true,
+        beginAtZero: false,
+        grace: "10%",
         grid: { color: "rgba(148, 163, 184, 0.05)" },
         border: { display: false },
       },
@@ -448,26 +376,35 @@ export function WaterQualityCard({
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Time Range Selector */}
-            {onTimeRangeChange && (
-              <div className="flex items-center gap-1 bg-slate-900/50 p-1 rounded-lg border border-white/5">
-                {(["1h", "24h", "7d"] as const).map((range) => (
+          <div className="flex items-center gap-1.5">
+            {/* Metric Selector Tabs (Replaces 1h | 24h | 7d) */}
+            <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-lg border border-white/5 overflow-x-auto max-w-[280px] sm:max-w-none">
+              {[
+                { key: "level", label: "Water Level" },
+                { key: "ph", label: "pH" },
+                { key: "tds", label: "TDS" },
+                { key: "turbidity", label: "Turbidity" },
+                { key: "flow", label: "Flow" },
+              ].map((tab) => {
+                const isSelected = (activeMetric || "level") === tab.key;
+                return (
                   <button
-                    key={range}
-                    onClick={(e) => { e.stopPropagation(); onTimeRangeChange(range); }}
-                    className={`px-2 py-0.5 rounded text-[11px] font-black uppercase transition-all ${timeRange === range
-                      ? "bg-cyan-500/20 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
-                      : "text-slate-500 hover:text-slate-400"
-                      }`}
+                    key={tab.key}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMetricSelect(tab.key);
+                    }}
+                    className={`px-2 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap transition-all ${
+                      isSelected
+                        ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                        : "text-slate-500 hover:text-slate-300"
+                    }`}
                   >
-                    {range}
+                    {tab.label}
                   </button>
-                ))}
-              </div>
-            )}
-
-            {/* Expand button removed — modal caused client-side exception */}
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
