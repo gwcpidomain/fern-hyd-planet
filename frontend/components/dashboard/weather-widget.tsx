@@ -179,11 +179,11 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
           </div>
         </div>
 
-        {/* Grid of metrics */}
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 flex-1">
+        {/* Grid of metrics — 3 columns × 2 rows */}
+        <div className="grid grid-cols-3 gap-x-2 gap-y-1.5 flex-1">
 
-          {/* Wind */}
-          <div className="flex items-center gap-1.5 group">
+          {/* Row 1: Wind */}
+          <div className="flex items-center gap-1.5">
             <Wind className="h-3 w-3 text-cyan-400 shrink-0" />
             <div className="flex flex-col leading-tight">
               <span className="text-[9px] text-slate-500 uppercase tracking-wide">Wind</span>
@@ -193,7 +193,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
             </div>
           </div>
 
-          {/* Humidity */}
+          {/* Row 1: Humidity */}
           <div className="flex items-center gap-1.5">
             <Droplets className="h-3 w-3 text-blue-400 shrink-0" />
             <div className="flex flex-col leading-tight">
@@ -202,7 +202,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
             </div>
           </div>
 
-          {/* UV Index */}
+          {/* Row 1: UV Index */}
           <div className="flex items-center gap-1.5">
             <Sun className="h-3 w-3 shrink-0" style={{ color: uvInfo.color }} />
             <div className="flex flex-col leading-tight">
@@ -213,7 +213,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
             </div>
           </div>
 
-          {/* Precipitation */}
+          {/* Row 2: Rain Today */}
           <div className="flex items-center gap-1.5">
             <CloudRain className="h-3 w-3 text-indigo-400 shrink-0" />
             <div className="flex flex-col leading-tight">
@@ -222,7 +222,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
             </div>
           </div>
 
-          {/* Visibility */}
+          {/* Row 2: Visibility */}
           <div className="flex items-center gap-1.5">
             <Eye className="h-3 w-3 text-slate-400 shrink-0" />
             <div className="flex flex-col leading-tight">
@@ -231,7 +231,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
             </div>
           </div>
 
-          {/* Pressure */}
+          {/* Row 2: Pressure */}
           <div className="flex items-center gap-1.5">
             <Gauge className="h-3 w-3 text-purple-400 shrink-0" />
             <div className="flex flex-col leading-tight">
@@ -240,6 +240,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
             </div>
           </div>
         </div>
+
 
         {/* Surrounding Air Quality divider */}
         <div className="border-t border-white/[0.06] pt-1.5">
