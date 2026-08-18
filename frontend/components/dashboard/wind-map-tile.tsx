@@ -13,7 +13,7 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
   const mapLon = lon ?? 78.46
   const zoom   = 6
 
-  // Windy.com free embed — dark mode, wind overlay, centered on tenant coordinates
+  // Windy.com free embed — wind overlay, dark-adjusted, centered on tenant coordinates
   const windyUrl =
     `https://embed.windy.com/embed2.html?lat=${mapLat}&lon=${mapLon}&detailLat=${mapLat}&detailLon=${mapLon}` +
     `&width=650&height=450&zoom=${zoom}&level=surface&overlay=wind&product=ecmwf` +
@@ -42,20 +42,33 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
       {/* Windy embed — fills remaining space */}
       <div className="flex-1 relative min-h-0 overflow-hidden">
         {!lat && !lon ? (
-          // Placeholder while location loads
           <div className="h-full flex flex-col items-center justify-center gap-2">
             <Wind className="h-8 w-8 text-cyan-400/40 animate-spin" style={{ animationDuration: "3s" }} />
             <span className="text-[10px] text-slate-500">Awaiting site coordinates…</span>
           </div>
         ) : (
-          <iframe
-            key={`${mapLat}-${mapLon}`}
-            src={windyUrl}
-            className="absolute inset-0 w-full h-full border-0"
-            allow="fullscreen"
-            title="Live Wind Map"
-            loading="lazy"
-          />
+          <>
+            <iframe
+              key={`${mapLat}-${mapLon}`}
+              src={windyUrl}
+              className="absolute inset-0 w-full h-full border-0"
+              style={{
+                filter: "brightness(0.72) contrast(1.1) saturate(0.85)",
+              }}
+              allow="fullscreen"
+              title="Live Wind Map"
+              loading="lazy"
+            />
+            {/* Dark vignette overlay to blend edges with card */}
+            <div
+              className="absolute inset-0 pointer-events-none rounded-b-xl"
+              style={{
+                background:
+                  "radial-gradient(ellipse at center, transparent 55%, rgba(3,6,23,0.55) 100%)",
+                boxShadow: "inset 0 0 30px 10px rgba(3,6,23,0.4)",
+              }}
+            />
+          </>
         )}
       </div>
     </div>
