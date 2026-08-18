@@ -158,7 +158,7 @@ export function AiSummarizerCard({
   }, [liveEvents])
 
   return (
-    <div className="card-vibrant relative flex h-full flex-col overflow-hidden rounded-xl bg-slate-900/40 !p-3 backdrop-blur-md lg:backdrop-blur-xl border border-emerald-500/10">
+    <div className="card-vibrant relative flex h-full flex-col overflow-hidden rounded-xl bg-slate-900/35 !p-3 backdrop-blur-2xl border border-emerald-500/[0.12] shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.07)]">
       {/* 1. FIXED HEADER */}
       <div className="mb-2 shrink-0 flex items-center justify-between border-b border-white/5 pb-2">
         <h3 className="text-[13px] font-black uppercase tracking-[0.1em] text-emerald-400 flex items-center gap-2 whitespace-nowrap">

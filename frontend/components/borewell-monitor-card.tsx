@@ -39,7 +39,7 @@ export function BorewellMonitorCard({
   ];
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl p-4 bg-[rgba(6,10,30,0.4)] backdrop-blur-md lg:backdrop-blur-[32px] border border-white/5 shadow-lg lg:shadow-[0_6px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.05),0_0_0_1px_rgba(124,255,154,0.05),0_0_40px_rgba(15,23,42,0.6)] transition-all duration-200">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl p-4 bg-[rgba(6,10,30,0.35)] backdrop-blur-2xl border border-white/[0.08] shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(124,255,154,0.05),0_0_40px_rgba(15,23,42,0.6)] transition-all duration-200">
       {/* Background Glow */}
       <div className="absolute -left-20 -top-20 h-40 w-40 rounded-full blur-[80px] bg-cyan-500/10 pointer-events-none transition-colors duration-700" />
 

@@ -13,7 +13,7 @@ interface WaterAnalysisSplitProps {
 
 export function WaterAnalysisSplit({ waterData, maxWaterLevel, waterStatus, isMotorOn = false }: WaterAnalysisSplitProps) {
   return (
-    <div className="relative flex h-full flex-col lg:flex-row overflow-hidden rounded-xl bg-[rgba(6,10,30,0.4)] backdrop-blur-md lg:backdrop-blur-[32px] border border-white/5 group shadow-[0_6px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.05),0_0_0_1px_rgba(124,255,154,0.05),0_0_40px_rgba(15,23,42,0.6)] transition-all duration-200">
+    <div className="relative flex h-full flex-col lg:flex-row overflow-hidden rounded-xl bg-[rgba(6,10,30,0.35)] backdrop-blur-2xl border border-white/[0.08] group shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(124,255,154,0.05),0_0_40px_rgba(15,23,42,0.6)] transition-all duration-200">
       {/* Background Glow */}
       <div className="absolute -right-20 -bottom-20 h-40 w-40 rounded-full blur-[80px] bg-cyan-500/10 pointer-events-none group-hover:bg-cyan-500/20 transition-colors duration-700" />
 

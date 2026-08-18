@@ -72,9 +72,10 @@ function timeAgo(isoString: string): string {
 
 interface WeatherWidgetProps {
   token: string | null
+  onConditionChange?: (condition: string) => void
 }
 
-export function WeatherWidget({ token }: WeatherWidgetProps) {
+export function WeatherWidget({ token, onConditionChange }: WeatherWidgetProps) {
   const [weather, setWeather] = useState<WeatherData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,12 +87,15 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
       const data = await apiClient<WeatherData>("/api/weather", { token, showErrorToast: false })
       setWeather(data)
       setError(null)
+      if (onConditionChange && data.condition) {
+        onConditionChange(data.condition)
+      }
     } catch (e: any) {
       setError(e?.message || "Weather unavailable")
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, onConditionChange])
 
   useEffect(() => {
     fetchWeather()
@@ -137,7 +141,7 @@ export function WeatherWidget({ token }: WeatherWidgetProps) {
   const isStale = weather.stale
 
   return (
-    <div className="relative h-full flex flex-col overflow-hidden rounded-xl bg-[rgba(6,10,30,0.4)] backdrop-blur-md border border-white/5 shadow-[0_6px_24px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.05)]">
+    <div className="relative h-full flex flex-col overflow-hidden rounded-xl bg-[rgba(6,10,30,0.35)] backdrop-blur-2xl border border-white/[0.08] shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
       {/* Subtle glow */}
       <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full blur-[60px] bg-sky-500/10 pointer-events-none" />
       <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full blur-[60px] bg-indigo-500/10 pointer-events-none" />

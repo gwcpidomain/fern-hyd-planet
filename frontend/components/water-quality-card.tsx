@@ -201,7 +201,6 @@ export function WaterQualityCard({
     ph: { label: "pH Level", shortLabel: "pH", color: "rgb(74, 222, 128)", bgColor: "rgba(74, 222, 128, 0.1)", unit: "" },
     tds: { label: "TDS", shortLabel: "TDS", color: "rgb(251, 191, 36)", bgColor: "rgba(251, 191, 36, 0.1)", unit: "ppm" },
     turbidity: { label: "Turbidity", shortLabel: "Turbidity", color: "rgb(168, 85, 247)", bgColor: "rgba(168, 85, 247, 0.1)", unit: "NTU" },
-    flow: { label: "Flow Rate", shortLabel: "Flow", color: "rgb(96, 165, 250)", bgColor: "rgba(96, 165, 250, 0.1)", unit: "LPM" },
   }
   const cfg = metricConfig[chartMetric] || metricConfig.level
 
@@ -246,15 +245,31 @@ export function WaterQualityCard({
         label: `${cfg.label} ${cfg.unit ? `(${cfg.unit})` : ''}`,
         data: chartValues,
         borderColor: cfg.color,
-        backgroundColor: cfg.bgColor,
-        borderWidth: 2,
-        tension: 0.3,
+        backgroundColor: (context: any) => {
+          const chart = context.chart;
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return cfg.bgColor;
+          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+          const rgbMatch = cfg.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+          if (rgbMatch) {
+            const [, r, g, b] = rgbMatch;
+            gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.45)`);
+            gradient.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, 0.12)`);
+            gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+          } else {
+            gradient.addColorStop(0, cfg.bgColor);
+            gradient.addColorStop(1, 'transparent');
+          }
+          return gradient;
+        },
+        borderWidth: 2.5,
+        tension: 0.45,
         fill: true,
         pointRadius: 0,
-        pointHoverRadius: 5,
-        pointBackgroundColor: cfg.color,
-        pointBorderColor: "#0f172a",
-        pointBorderWidth: 1,
+        pointHoverRadius: 6,
+        pointHoverBackgroundColor: cfg.color,
+        pointHoverBorderColor: "#0f172a",
+        pointHoverBorderWidth: 2,
       },
     ],
   }
@@ -353,7 +368,7 @@ export function WaterQualityCard({
 
   return (
     <div
-      className={`${transparent ? '' : 'relative h-full w-full overflow-hidden rounded-2xl border border-white/5 bg-slate-900/40 p-3 backdrop-blur-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.1)]'} group flex min-h-0 flex-col transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"
+      className={`${transparent ? '' : 'relative h-full w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-900/35 p-3 backdrop-blur-2xl shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_0_30px_rgba(6,182,212,0.12)]'} group flex min-h-0 flex-col transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"
         }`}
       style={{ transitionDelay: "100ms" }}
     >
@@ -380,7 +395,6 @@ export function WaterQualityCard({
                 { key: "ph", label: "pH" },
                 { key: "tds", label: "TDS" },
                 { key: "turbidity", label: "Turbidity" },
-                { key: "flow", label: "Flow" },
               ].map((tab) => {
                 const isSelected = (activeMetric || "level") === tab.key;
                 return (

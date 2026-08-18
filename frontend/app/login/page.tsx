@@ -47,7 +47,7 @@ export default function LoginPage() {
       {/* --- ROTATING COSMIC EARTH BACKGROUND --- */}
       <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none">
         <div 
-          className="w-[180vh] h-[180vh] md:w-[150vh] md:h-[150vh] rounded-full bg-cover bg-center opacity-30 animate-[spin_240s_linear_infinite] filter brightness-[0.75] contrast-[1.05]"
+          className="w-[260vh] h-[260vh] md:w-[220vh] md:h-[220vh] rounded-full bg-cover bg-center opacity-[0.45] animate-[spin_240s_linear_infinite] filter brightness-[0.75] contrast-[1.05]"
           style={{ backgroundImage: "url('/cosmic-earth.png')" }}
         />
         {/* Shadow Overlay */}
@@ -71,10 +71,10 @@ export default function LoginPage() {
           {/* Heading */}
           <div className="text-center mb-7">
             <h1 className="text-2xl font-bold tracking-wide text-white">
-              EcoSphere
+              Planet Insights
             </h1>
             <p className="text-[10px] uppercase tracking-[0.25em] text-emerald-400 font-extrabold mt-1">
-              Intelligence
+              Environmental Monitoring
             </p>
           </div>
 
@@ -123,14 +123,14 @@ export default function LoginPage() {
               disabled={isSubmitting}
               className="w-full py-3 mt-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
-              <span>{isSubmitting ? "Initializing..." : "Initialize Session"}</span>
+              <span>{isSubmitting ? "Signing in..." : "Sign In"}</span>
               <span className="text-[12px] font-normal">&rarr;</span>
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <Link href="/signup" className="text-[10px] text-slate-400 hover:text-emerald-400 transition-colors font-medium">
-              No uplink detected? Register Node
+              Need access? Contact your admin
             </Link>
           </div>
         </div>

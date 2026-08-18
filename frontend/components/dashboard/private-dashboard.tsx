@@ -82,9 +82,9 @@ export function PrivateDashboard() {
     const [modalConfig, setModalConfig] = useState<{ isOpen: boolean; type: 'aqi' | 'water' | null }>({ isOpen: false, type: null });
     const [timeRange, setTimeRange] = useState<"1h" | "24h" | "7d">("1h");
 
-    // Auto-rotate Water Trend tile metric every 2 minutes (Level -> pH -> TDS -> Turbidity -> Flow)
+    // Auto-rotate Water Trend tile metric every 2 minutes (Level -> pH -> TDS -> Turbidity)
     useEffect(() => {
-        const metrics = ["level", "ph", "tds", "turbidity", "flow"];
+        const metrics = ["level", "ph", "tds", "turbidity"];
         const interval = setInterval(() => {
             setSelectedWaterMetric((current) => {
                 const active = current || "level";
@@ -986,6 +986,8 @@ export function PrivateDashboard() {
 
     // Visual Effects... (Existing)
     const [stars, setStars] = useState<Array<{ left: string; top: string; delay: string; duration: string }>>([])
+    const [weatherBg, setWeatherBg] = useState('')
+    const [rainParticles, setRainParticles] = useState<Array<{ left: string; delay: string; duration: string }>>([])
     useEffect(() => {
         if (waterData) setMaxWaterLevel((prev) => Math.max(prev, waterData.level))
     }, [waterData])
@@ -1004,6 +1006,14 @@ export function PrivateDashboard() {
             top: `${Math.random() * 100}%`,
             delay: `${Math.random() * 3}s`,
             duration: `${2 + Math.random() * 2}s`,
+        })))
+    }, [])
+
+    useEffect(() => {
+        setRainParticles(Array.from({ length: 20 }).map(() => ({
+            left: `${Math.random() * 100}%`,
+            delay: `${Math.random() * 2.5}s`,
+            duration: `${2 + Math.random() * 1.5}s`,
         })))
     }, [])
 
@@ -1101,13 +1111,42 @@ export function PrivateDashboard() {
 
                 {/* Animated Background */}
                 <div className="fixed inset-0 z-0">
+                    {/* Layer 0: Base gradient */}
                     <div className="absolute inset-0 bg-gradient-to-br from-[#0a0520] via-[#050511] to-[#000208]" />
+                    {/* Layer 1: Background Video (blended, 12% opacity) */}
+                    <video
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="absolute inset-0 h-full w-full object-cover opacity-[0.22] pointer-events-none"
+                        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260613_180732_a54afbf6-b30d-470e-861f-669871f09f67.mp4"
+                    />
+                    {/* Layer 2: Weather Atmosphere (condition-reactive, 6-10% opacity) */}
+                    <div
+                        className={`absolute inset-0 pointer-events-none transition-all duration-[3000ms] ${
+                            weatherBg === 'rain'   ? 'bg-blue-900/[0.18]' :
+                            weatherBg === 'sunny'  ? 'bg-amber-500/[0.10]' :
+                            weatherBg === 'cloudy' ? 'bg-slate-600/[0.14]' :
+                            ''
+                        }`}
+                    />
+                    {/* Rain particles — rendered only when raining */}
+                    {weatherBg === 'rain' && rainParticles.map((p, i) => (
+                        <div
+                            key={i}
+                            className="rain-particle"
+                            style={{ left: p.left, animationDelay: p.delay, animationDuration: p.duration }}
+                        />
+                    ))}
+                    {/* Layer 3: Mouse parallax glows */}
                     {isSystemOnline && (
                         <>
                             <div className="hidden lg:block absolute h-[600px] w-[600px] rounded-full bg-gradient-to-br from-emerald-600/20 via-cyan-600/10 to-transparent blur-[100px]" style={{ left: `calc(15% + ${mousePosition.x}px)`, top: `calc(15% + ${mousePosition.y}px)`, transition: "left 0.3s ease-out, top 0.3s ease-out" }} />
                             <div className="hidden lg:block animation-delay-2000 absolute h-[500px] w-[500px] rounded-full bg-gradient-to-br from-purple-600/15 via-indigo-600/10 to-transparent blur-[100px]" style={{ right: `calc(10% + ${-mousePosition.x}px)`, top: `calc(20% + ${-mousePosition.y}px)`, transition: "right 0.3s ease-out, top 0.3s ease-out" }} />
                         </>
                     )}
+                    {/* Layer 4: Stars */}
                     <div className="absolute inset-0 opacity-70">
                         {stars.map((star, i) => (
                             <div key={i} className={`absolute h-[2px] w-[2px] rounded-full bg-white ${isSystemOnline ? 'lg:animate-twinkle' : ''}`} style={{ left: star.left, top: star.top, animationDelay: star.delay, animationDuration: star.duration }} />
@@ -1177,7 +1216,7 @@ export function PrivateDashboard() {
                     {/* View Switcher - Standard window scrolling on mobile for stability */}
                     <main className="flex-1 overflow-x-hidden overflow-y-auto lg:overflow-hidden p-2">
                         {activeView === "dashboard" ? (
-                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[38%_31%_31%] lg:grid-rows-[35%_35%_30%] gap-4 lg:gap-2">
+                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[34%_33%_33%] lg:grid-rows-[35%_35%_30%] gap-4 lg:gap-2">
 
                                 {/* Top Left: Borewell Monitor */}
                                 <div className="lg:col-start-1 lg:row-start-1 min-h-[250px] lg:min-h-0">
@@ -1232,7 +1271,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Top Right: Global Comparative Globe */}
-                                <div className="lg:col-start-3 lg:row-start-1 overflow-hidden rounded-xl border border-white/5 bg-slate-900/20 backdrop-blur-md min-h-[350px] lg:min-h-0">
+                                <div className="lg:col-start-3 lg:row-start-1 overflow-hidden rounded-xl border border-white/[0.08] bg-slate-900/30 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] min-h-[350px] lg:min-h-0">
                                     <ErrorBoundary title="Global Comparative Globe">
                                         <GlobalComparativeGlobe
                                             userAQI={calculateAQI({
@@ -1249,7 +1288,13 @@ export function PrivateDashboard() {
                                 {/* Middle Left: Surrounding Conditions (Weather Widget) */}
                                 <div className="lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Surrounding Conditions">
-                                        <WeatherWidget token={token} />
+                                        <WeatherWidget token={token} onConditionChange={(c) => {
+                                            const lower = c.toLowerCase()
+                                            if (lower.includes('rain') || lower.includes('drizzle') || lower.includes('shower') || lower.includes('thunder')) setWeatherBg('rain')
+                                            else if (lower.includes('cloud') || lower.includes('overcast')) setWeatherBg('cloudy')
+                                            else if (lower.includes('sun') || lower.includes('clear') || lower.includes('bright')) setWeatherBg('sunny')
+                                            else setWeatherBg('clear')
+                                        }} />
                                     </ErrorBoundary>
                                 </div>
 
@@ -1317,7 +1362,7 @@ export function PrivateDashboard() {
 
                                 {/* Bottom Middle: Sensor Status */}
                                 <div className="lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
-                                    <div className="relative flex h-full flex-col rounded-xl bg-slate-900/40 backdrop-blur-md lg:backdrop-blur-xl border border-white/5 p-3 overflow-hidden">
+                                    <div className="relative flex h-full flex-col rounded-xl bg-slate-900/50 backdrop-blur-xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] p-3 overflow-hidden">
                                         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
                                         <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                             {(() => {

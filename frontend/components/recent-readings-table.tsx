@@ -58,7 +58,7 @@ export function RecentReadingsTable({
   )
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/5 bg-slate-900/40 p-3 backdrop-blur-xl flex flex-col justify-between">
+    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-900/35 p-3 backdrop-blur-2xl shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] flex flex-col justify-between">
       <div className="mb-1 flex items-center justify-between gap-2 shrink-0">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-bold-slate-400">
