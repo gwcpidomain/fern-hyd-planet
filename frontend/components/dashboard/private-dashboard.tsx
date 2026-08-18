@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { AirQualityCard } from "@/components/air-quality-card"
 import { LoadingScreen } from "@/components/loading-screen"
 import { SpeedometerGauge } from "@/components/environmental-core"
@@ -988,6 +988,15 @@ export function PrivateDashboard() {
     const [stars, setStars] = useState<Array<{ left: string; top: string; delay: string; duration: string }>>([])
     const [weatherBg, setWeatherBg] = useState('')
     const [rainParticles, setRainParticles] = useState<Array<{ left: string; delay: string; duration: string }>>([])
+
+    // Stable callback — useCallback prevents WeatherWidget from infinite-looping on every render
+    const handleConditionChange = useCallback((c: string) => {
+        const lower = c.toLowerCase()
+        if (lower.includes('rain') || lower.includes('drizzle') || lower.includes('shower') || lower.includes('thunder')) setWeatherBg('rain')
+        else if (lower.includes('cloud') || lower.includes('overcast')) setWeatherBg('cloudy')
+        else if (lower.includes('sun') || lower.includes('clear') || lower.includes('bright')) setWeatherBg('sunny')
+        else setWeatherBg('clear')
+    }, [])
     useEffect(() => {
         if (waterData) setMaxWaterLevel((prev) => Math.max(prev, waterData.level))
     }, [waterData])
@@ -1119,7 +1128,7 @@ export function PrivateDashboard() {
                         muted
                         loop
                         playsInline
-                        className="absolute inset-0 h-full w-full object-cover opacity-[0.22] pointer-events-none"
+                        className="absolute inset-0 h-full w-full object-cover opacity-[0.32] pointer-events-none mix-blend-screen"
                         src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260613_180732_a54afbf6-b30d-470e-861f-669871f09f67.mp4"
                     />
                     {/* Layer 2: Weather Atmosphere (condition-reactive, 6-10% opacity) */}
@@ -1216,7 +1225,7 @@ export function PrivateDashboard() {
                     {/* View Switcher - Standard window scrolling on mobile for stability */}
                     <main className="flex-1 overflow-x-hidden overflow-y-auto lg:overflow-hidden p-2">
                         {activeView === "dashboard" ? (
-                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[34%_33%_33%] lg:grid-rows-[35%_35%_30%] gap-4 lg:gap-2">
+                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[34%_33%_33%] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2">
 
                                 {/* Top Left: Borewell Monitor */}
                                 <div className="lg:col-start-1 lg:row-start-1 min-h-[250px] lg:min-h-0">
@@ -1288,13 +1297,7 @@ export function PrivateDashboard() {
                                 {/* Middle Left: Surrounding Conditions (Weather Widget) */}
                                 <div className="lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Surrounding Conditions">
-                                        <WeatherWidget token={token} onConditionChange={(c) => {
-                                            const lower = c.toLowerCase()
-                                            if (lower.includes('rain') || lower.includes('drizzle') || lower.includes('shower') || lower.includes('thunder')) setWeatherBg('rain')
-                                            else if (lower.includes('cloud') || lower.includes('overcast')) setWeatherBg('cloudy')
-                                            else if (lower.includes('sun') || lower.includes('clear') || lower.includes('bright')) setWeatherBg('sunny')
-                                            else setWeatherBg('clear')
-                                        }} />
+                                        <WeatherWidget token={token} onConditionChange={handleConditionChange} />
                                     </ErrorBoundary>
                                 </div>
 
