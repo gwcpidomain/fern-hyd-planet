@@ -19,7 +19,9 @@ import { WaterAnalysisSplit } from "@/components/analysis/water-split"
 import { BorewellHealthIndex } from "@/components/analysis/health-index"
 import { WeatherWidget } from "@/components/dashboard/weather-widget"
 import { BorewellMonitorCard } from "@/components/borewell-monitor-card"
-import { AiSummarizerCard } from "@/components/ai-summarizer-card"
+import { ForecastTile } from "@/components/dashboard/forecast-tile"
+import { SunriseSunsetTile } from "@/components/dashboard/sunrise-sunset-tile"
+import { WindMapTile } from "@/components/dashboard/wind-map-tile"
 import dynamic from "next/dynamic"
 import { useRealtimeData } from "@/hooks/useRealtimeData"
 import { useAuth } from "@/components/auth-provider"
@@ -988,6 +990,8 @@ export function PrivateDashboard() {
     const [stars, setStars] = useState<Array<{ left: string; top: string; delay: string; duration: string }>>([])
     const [weatherBg, setWeatherBg] = useState('')
     const [rainParticles, setRainParticles] = useState<Array<{ left: string; delay: string; duration: string }>>([])
+    // Weather full data (forecast + astro) lifted from WeatherWidget for ForecastTile and SunriseSunsetTile
+    const [weatherFull, setWeatherFull] = useState<{ forecast?: any[]; sunrise?: string | null; sunset?: string | null; lat?: number; lon?: number } | null>(null)
 
     // Stable callback — useCallback prevents WeatherWidget from infinite-looping on every render
     const handleConditionChange = useCallback((c: string) => {
@@ -996,6 +1000,10 @@ export function PrivateDashboard() {
         else if (lower.includes('cloud') || lower.includes('overcast')) setWeatherBg('cloudy')
         else if (lower.includes('sun') || lower.includes('clear') || lower.includes('bright')) setWeatherBg('sunny')
         else setWeatherBg('clear')
+    }, [])
+    // Lift full weather payload (forecast + astro) up so ForecastTile / SunriseSunsetTile / WindMapTile can consume it
+    const handleWeatherLoad = useCallback((data: any) => {
+        setWeatherFull({ forecast: data.forecast, sunrise: data.sunrise, sunset: data.sunset, lat: data.lat, lon: data.lon })
     }, [])
     useEffect(() => {
         if (waterData) setMaxWaterLevel((prev) => Math.max(prev, waterData.level))
@@ -1227,7 +1235,7 @@ export function PrivateDashboard() {
                         {activeView === "dashboard" ? (
                             <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[34%_33%_33%] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2">
 
-                                {/* Top Left: Borewell Monitor */}
+                                {/* ─── COL 1 ROW 1: Aquifer Monitor (no change) ─── */}
                                 <div className="lg:col-start-1 lg:row-start-1 min-h-[250px] lg:min-h-0">
                                     <ErrorBoundary title="Borewell Monitor">
                                         <BorewellMonitorCard
@@ -1261,7 +1269,22 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                <div className="lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[350px] lg:min-h-0">
+                                {/* ─── COL 2 ROW 1: Surrounding Conditions (Weather) ─── */}
+                                <div className="lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
+                                    <ErrorBoundary title="Surrounding Conditions">
+                                        <WeatherWidget token={token} onConditionChange={handleConditionChange} onWeatherLoad={handleWeatherLoad} />
+                                    </ErrorBoundary>
+                                </div>
+
+                                {/* ─── COL 3 ROW 1: 3-Day Forecast ─── */}
+                                <div className="lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
+                                    <ErrorBoundary title="3-Day Forecast">
+                                        <ForecastTile forecast={weatherFull?.forecast} />
+                                    </ErrorBoundary>
+                                </div>
+
+                                {/* ─── COL 1 ROW 2: WQI Analysis + Pump Monitor ─── */}
+                                <div className="lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Water Analysis">
                                         <WaterAnalysisSplit
                                             waterData={{
@@ -1279,29 +1302,30 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* Top Right: Global Comparative Globe */}
-                                <div className="lg:col-start-3 lg:row-start-1 overflow-hidden rounded-xl border border-white/[0.08] bg-slate-900/30 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] min-h-[350px] lg:min-h-0">
-                                    <ErrorBoundary title="Global Comparative Globe">
-                                        <GlobalComparativeGlobe
-                                            userAQI={calculateAQI({
-                                                pm25: safeAirData.pm25,
-                                                pm10: safeAirData.pm10
-                                            }).aqi}
-                                            userLat={locationsStatus[currentLocation]?.latitude ?? 17.3850}
-                                            userLng={locationsStatus[currentLocation]?.longitude ?? 78.4867}
-                                            locationName={currentLocation || "HYD-01"}
+                                {/* ─── COL 2 ROW 2: AQI Pollutant Hub ─── */}
+                                <div className="lg:col-start-2 lg:row-start-2 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
+                                    <ErrorBoundary title="AQI Pollutant Hub">
+                                        <AQIPollutantHub
+                                            data={safeAirData}
+                                            activeMetric={selectedPollutant}
+                                            onMetricSelect={handleTileClick}
+                                            isOffline={isAirOffline}
+                                            mode="compact"
+                                            timeRange={timeRange}
+                                            onTimeRangeChange={setTimeRange}
                                         />
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* Middle Left: Surrounding Conditions (Weather Widget) */}
-                                <div className="lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
-                                    <ErrorBoundary title="Surrounding Conditions">
-                                        <WeatherWidget token={token} onConditionChange={handleConditionChange} />
+                                {/* ─── COL 3 ROW 2: Sunrise / Sunset ─── */}
+                                <div className="lg:col-start-3 lg:row-start-2 overflow-hidden min-h-[280px] lg:min-h-0">
+                                    <ErrorBoundary title="Sunrise Sunset">
+                                        <SunriseSunsetTile sunrise={weatherFull?.sunrise} sunset={weatherFull?.sunset} />
                                     </ErrorBoundary>
                                 </div>
 
-                                <div className="lg:col-start-2 lg:row-start-2 overflow-hidden min-h-[350px] lg:min-h-0">
+                                {/* ─── COL 1 ROW 3: Water Level Trend ─── */}
+                                <div className="lg:col-start-1 lg:row-start-3 overflow-hidden min-h-[250px] lg:min-h-0">
                                     <ErrorBoundary title="Water Quality Card">
                                         <WaterQualityCard
                                             data={{
@@ -1332,38 +1356,7 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* Middle Right: Yearly Water Level Comparison */}
-                                <div className="lg:col-start-3 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
-                                    <ErrorBoundary title="Recent Readings">
-                                        <RecentReadingsTable
-                                            waterLevels={historicalReadings.waterLevels}
-                                            aqiValues={historicalReadings.aqiValues}
-                                            labels={historicalReadings.labels}
-                                            period={readingsPeriod}
-                                            onPeriodChange={setReadingsPeriod}
-                                            onExpand={() => setReadingsModalOpen(true)}
-                                            yearlyLabels={yearlyWaterComparison.labels}
-                                            yearlyWaterLevels={yearlyWaterComparison.waterLevels}
-                                        />
-                                    </ErrorBoundary>
-                                </div>
-
-                                {/* Bottom Left: AQI Pollutant Hub */}
-                                <div className="lg:col-start-1 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
-                                    <ErrorBoundary title="AQI Pollutant Hub">
-                                        <AQIPollutantHub
-                                            data={safeAirData}
-                                            activeMetric={selectedPollutant}
-                                            onMetricSelect={handleTileClick}
-                                            isOffline={isAirOffline}
-                                            mode="compact"
-                                            timeRange={timeRange}
-                                            onTimeRangeChange={setTimeRange}
-                                        />
-                                    </ErrorBoundary>
-                                </div>
-
-                                {/* Bottom Middle: Sensor Status */}
+                                {/* ─── COL 2 ROW 3: Sensor Status (no change) ─── */}
                                 <div className="lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
                                     <div className="relative flex h-full flex-col rounded-xl bg-slate-900/50 backdrop-blur-xl border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] p-3 overflow-hidden">
                                         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
@@ -1423,15 +1416,12 @@ export function PrivateDashboard() {
                                     </div>
                                 </div>
 
-                                {/* Bottom Right: AI Summarizer */}
+                                {/* ─── COL 3 ROW 3: Wind Map ─── */}
                                 <div className="lg:col-start-3 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
-                                    <ErrorBoundary title="AI Summary Agent">
-                                        <AiSummarizerCard
-                                            waterData={safeWaterData}
-                                            isMotorOn={isMotorOn}
-                                            airData={safeAirData}
-                                            isWaterOffline={isWaterOffline}
-                                            isAirOffline={isAirOffline}
+                                    <ErrorBoundary title="Wind Map">
+                                        <WindMapTile
+                                            lat={weatherFull?.lat ?? locationsStatus[currentLocation]?.latitude}
+                                            lon={weatherFull?.lon ?? locationsStatus[currentLocation]?.longitude}
                                         />
                                     </ErrorBoundary>
                                 </div>

@@ -879,7 +879,7 @@ app.get('/api/weather', requireDashboardAuth, async (req, res) => {
     }
 
     try {
-      const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${tenant.latitude},${tenant.longitude}&aqi=yes`;
+      const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${tenant.latitude},${tenant.longitude}&days=3&aqi=yes`;
       const response = await fetch(url);
       if (!response.ok) {
         const errText = await response.text();
@@ -887,39 +887,70 @@ app.get('/api/weather', requireDashboardAuth, async (req, res) => {
       }
       const raw = await response.json();
 
+      // Today's forecastday object (astro + hourly)
+      const todayForecast = raw.forecast?.forecastday?.[0];
+      const currentHour = new Date().getHours();
+
+      // Next 6 hourly slots from current hour
+      const hourly = (todayForecast?.hour || [])
+        .filter((h) => new Date(h.time).getHours() >= currentHour)
+        .slice(0, 6)
+        .map((h) => ({
+          time: h.time,
+          temp_c: Math.round(h.temp_c),
+          condition: h.condition?.text || '',
+          icon: h.condition?.icon || '',
+          precip_chance: h.chance_of_rain || h.chance_of_snow || 0,
+        }));
+
+      // 3-day forecast
+      const forecast = (raw.forecast?.forecastday || []).map((d) => ({
+        date: d.date,
+        max_c: Math.round(d.day?.maxtemp_c),
+        min_c: Math.round(d.day?.mintemp_c),
+        condition: d.day?.condition?.text || '',
+        icon: d.day?.condition?.icon || '',
+        rain_chance: d.day?.daily_chance_of_rain || 0,
+      }));
+
       // Map only the fields we use on the dashboard
       const shaped = {
         location: raw.location?.name || tenant.name,
-        region: raw.location?.region || '',
-        country: raw.location?.country || '',
-        lat: raw.location?.lat,
-        lon: raw.location?.lon,
+        region:   raw.location?.region || '',
+        country:  raw.location?.country || '',
+        lat:      raw.location?.lat,
+        lon:      raw.location?.lon,
         // Current conditions
-        temp_c: raw.current?.temp_c,
-        feelslike_c: raw.current?.feelslike_c,
-        condition: raw.current?.condition?.text || 'N/A',
+        temp_c:       raw.current?.temp_c,
+        feelslike_c:  raw.current?.feelslike_c,
+        condition:    raw.current?.condition?.text || 'N/A',
         condition_icon: raw.current?.condition?.icon || null,
-        wind_kph: raw.current?.wind_kph,
-        wind_dir: raw.current?.wind_dir,
-        humidity: raw.current?.humidity,
-        uv: raw.current?.uv,
-        precip_mm: raw.current?.precip_mm,
-        vis_km: raw.current?.vis_km,
-        pressure_mb: raw.current?.pressure_mb,
-        cloud: raw.current?.cloud,
+        wind_kph:     raw.current?.wind_kph,
+        wind_dir:     raw.current?.wind_dir,
+        humidity:     raw.current?.humidity,
+        uv:           raw.current?.uv,
+        precip_mm:    raw.current?.precip_mm,
+        vis_km:       raw.current?.vis_km,
+        pressure_mb:  raw.current?.pressure_mb,
+        cloud:        raw.current?.cloud,
         // Air quality (surrounding, from WeatherAPI — distinct from on-site sensor)
-        pm25: raw.current?.air_quality?.pm2_5,
-        pm10: raw.current?.air_quality?.pm10,
-        co: raw.current?.air_quality?.co,
-        no2: raw.current?.air_quality?.no2,
-        o3: raw.current?.air_quality?.o3,
+        pm25:      raw.current?.air_quality?.pm2_5,
+        pm10:      raw.current?.air_quality?.pm10,
+        co:        raw.current?.air_quality?.co,
+        no2:       raw.current?.air_quality?.no2,
+        o3:        raw.current?.air_quality?.o3,
         aqi_index: raw.current?.air_quality?.['us-epa-index'], // 1=Good … 6=Hazardous
+        // Forecast + Astro additions
+        hourly,
+        forecast,
+        sunrise: todayForecast?.astro?.sunrise || null,
+        sunset:  todayForecast?.astro?.sunset  || null,
         fetchedAt: new Date().toISOString(),
         cached: false
       };
 
       weatherCache.set(tenantId, { data: shaped, fetchedAt: Date.now() });
-      console.log(`🌤️  Weather updated [tenant=${tenantId}]: ${shaped.temp_c}°C, ${shaped.condition}, UV=${shaped.uv}`);
+      console.log(`🌤️  Weather & Forecast updated [tenant=${tenantId}]: ${shaped.temp_c}°C, ${shaped.condition}, UV=${shaped.uv}`);
       res.json(shaped);
     } catch (e) {
       console.error(`❌ WeatherAPI fetch error [tenant=${tenantId}]:`, e.message);
