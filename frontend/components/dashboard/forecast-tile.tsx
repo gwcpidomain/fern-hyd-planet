@@ -110,11 +110,7 @@ export function ForecastTile({ forecast, isLoading }: ForecastTileProps) {
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-end px-3 pb-2">
-        <span className="text-[8px] font-semibold uppercase tracking-wider text-slate-600">
-          WeatherAPI
-        </span>
-      </div>
+
     </Card>
   )
 }

@@ -150,8 +150,7 @@ export function WeatherWidget({
 
   return (
     <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-0 text-white shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl">
-      <div className="pointer-events-none absolute -left-10 -top-10 h-28 w-28 rounded-full bg-sky-500/10 blur-[60px]" />
-      <div className="pointer-events-none absolute -bottom-10 -right-10 h-28 w-28 rounded-full bg-indigo-500/10 blur-[60px]" />
+
 
       <div className="flex shrink-0 items-center justify-between px-3 pb-1 pt-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -201,7 +200,7 @@ export function WeatherWidget({
             role="region"
             aria-label="Hourly weather forecast"
             tabIndex={0}
-            className="shrink-0 overflow-x-auto rounded-lg border border-white/[0.05] bg-white/[0.03] px-1.5 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="max-h-[58px] shrink-0 overflow-x-auto overflow-y-hidden rounded-lg border border-white/[0.05] bg-white/[0.03] px-1.5 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <div className="flex min-w-max items-stretch gap-1">
               {visibleHourly.map((slot, index) => {
@@ -288,9 +287,6 @@ export function WeatherWidget({
       <div className={`flex shrink-0 items-center justify-between border-t border-white/[0.04] px-3 py-1 ${isStale ? "bg-yellow-500/5" : ""}`}>
         <span className="text-[8px] font-bold text-slate-400">
           {isStale ? "⚠ Stale data" : "Updated"} {timeAgo(weather.fetchedAt)}
-        </span>
-        <span className="text-[8px] font-semibold uppercase tracking-wider text-slate-600">
-          WeatherAPI
         </span>
       </div>
     </Card>

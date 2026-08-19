@@ -213,7 +213,7 @@ export function AirQualityCard({ data, activeMetric, onMetricSelect, onExpand, i
       )}
 
       {/* Interactive Grid of Pollutants */}
-      <div className={`grid ${compact ? 'grid-cols-3 gap-1.5 flex-1 min-h-0' : 'grid-cols-2 gap-3 sm:grid-cols-3 flex-1 min-h-0'}`}>
+      <div className={`grid ${compact ? 'grid-cols-3 gap-1 flex-1 min-h-0' : 'grid-cols-2 gap-3 sm:grid-cols-3 flex-1 min-h-0'}`}>
         {[
           { key: "pm25", label: "PM2.5", value: animatedValues.pm25.toFixed(1), unit: "µg/m³", bg: "bg-orange-500", glow: "group-hover:shadow-[0_0_8px_rgba(249,115,22,0.6)]" },
           { key: "pm10", label: "PM10", value: animatedValues.pm10.toFixed(1), unit: "µg/m³", bg: "bg-amber-400", glow: "group-hover:shadow-[0_0_8px_rgba(251,191,36,0.6)]" },
@@ -228,7 +228,7 @@ export function AirQualityCard({ data, activeMetric, onMetricSelect, onExpand, i
               e.stopPropagation();
               onMetricSelect(item.key);
             }}
-            className={`group cursor-pointer relative overflow-hidden rounded-xl border ${compact ? 'p-1' : 'p-3'} transition-all duration-200 lg:duration-300 active:scale-95 ${activeMetric === item.key
+            className={`group cursor-pointer relative overflow-hidden rounded-xl border ${compact ? 'px-1.5 py-0.5' : 'p-3'} transition-all duration-200 lg:duration-300 active:scale-95 ${activeMetric === item.key
               ? "border-emerald-400/50 bg-emerald-500/10 shadow-[0_0_15px_rgba(52,211,153,0.3)] ring-1 ring-emerald-400"
               : "border-white/5 bg-slate-900/40 hover:border-emerald-500/30 hover:bg-slate-800/50 hover:shadow-[0_0_10px_rgba(52,211,153,0.1)]"
               }`}
@@ -241,7 +241,7 @@ export function AirQualityCard({ data, activeMetric, onMetricSelect, onExpand, i
                 </span>
                 <div className={`w-2 h-2 rounded-full ${item.bg} ${item.glow} transition-all duration-300 shadow-sm`} />
               </div>
-              <div className={`${compact ? 'mt-1' : 'mt-1.5'} flex items-baseline gap-1`}>
+              <div className={`${compact ? 'mt-0.5' : 'mt-1.5'} flex items-baseline gap-1`}>
                 <span className={`${compact ? 'text-2xl' : 'text-4xl'} font-black font-mono tracking-tighter transition-all duration-300 ${activeMetric === item.key ? "text-white" : "text-slate-100"
                   }`}>
                   {item.value}

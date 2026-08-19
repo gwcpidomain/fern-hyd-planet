@@ -56,19 +56,35 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
               src={windyUrl}
               className="absolute border-0"
               style={{
-                /* Expand outwards by 45 px on every edge to push branding/search off-screen */
-                top: "-45px",
-                bottom: "-45px",
-                left: "-45px",
-                right: "-45px",
-                width: "calc(100% + 90px)",
-                height: "calc(100% + 90px)",
+                /* Desktop: expand outwards to crop Windy branding off-screen.
+                   Mobile: normal fill — negative offset breaks off-screen iframe loading on phones */
+                top: "var(--wind-map-top, 0)",
+                bottom: "var(--wind-map-bottom, 0)",
+                left: "var(--wind-map-left, 0)",
+                right: "var(--wind-map-right, 0)",
+                width: "var(--wind-map-w, 100%)",
+                height: "var(--wind-map-h, 100%)",
                 filter: "brightness(0.72) contrast(1.1) saturate(0.85)",
               }}
-              allow="fullscreen"
+              // CSS custom properties swapped at md+ via a style tag below
+              allow="fullscreen; geolocation"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
               title="Live Wind Map"
               loading="lazy"
             />
+            {/* Inject desktop-only crop variables */}
+            <style>{`
+              @media (min-width: 768px) {
+                iframe[title="Live Wind Map"] {
+                  --wind-map-top: -45px;
+                  --wind-map-bottom: -45px;
+                  --wind-map-left: -45px;
+                  --wind-map-right: -45px;
+                  --wind-map-w: calc(100% + 90px);
+                  --wind-map-h: calc(100% + 90px);
+                }
+              }
+            `}</style>
             {/* Vignette to seamlessly blend the cropped edges with the card */}
             <div
               className="absolute inset-0 pointer-events-none rounded-b-xl"
