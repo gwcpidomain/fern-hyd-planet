@@ -4,8 +4,13 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ThemeProvider } from "@/components/theme-provider"
 
-const exo2 = {
+const inter = {
   className: "font-sans",
+  variable: "--font-inter"
+};
+
+const exo2 = {
+  className: "font-exo2",
   variable: "--font-exo2"
 };
 
@@ -36,7 +41,7 @@ export default function RootLayout({
         {/* Google Fonts loaded in browser to avoid Next.js compiler download blocks */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Exo+2:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
         {/* Leaflet CSS — must be in global head for reliable tile rendering */}
         <link
           rel="stylesheet"
@@ -45,7 +50,7 @@ export default function RootLayout({
           crossOrigin=""
         />
       </head>
-      <body className={`${exo2.className} ${spaceGrotesk.variable} antialiased`}>
+      <body className={`${inter.className} ${exo2.variable} ${spaceGrotesk.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false} disableTransitionOnChange>
           <AuthProvider>
             {children}

@@ -152,23 +152,9 @@ export function WeatherWidget({
     <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-0 text-white shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl">
 
 
-      <div className="flex shrink-0 items-center justify-between px-3 pb-1 pt-1.5">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <Cloud className="h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden="true" />
-          <h3 className="truncate text-[11px] font-black uppercase tracking-[0.25em] text-cyan-400">
-            Surrounding Conditions
-          </h3>
-        </div>
-        <div className="flex min-w-0 shrink-0 items-center gap-1">
-          <MapPin className="h-2.5 w-2.5 text-slate-500" aria-hidden="true" />
-          <span className="max-w-[110px] truncate text-[9px] font-bold uppercase tracking-wider text-slate-500">
-            {weather.location}
-          </span>
-        </div>
-      </div>
-      <Separator className="bg-white/[0.06]" />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden px-3 py-1.5">
+
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden px-3 pt-2.5 pb-1.5">
         <div className="flex shrink-0 items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center transition-transform duration-300 hover:scale-105">
             {currentIconUrl ? (
@@ -190,6 +176,10 @@ export function WeatherWidget({
             </span>
             <span className="mt-0.5 truncate text-[9px] leading-tight text-slate-400">
               Feels {weather.feelslike_c?.toFixed(1)}°C · {weather.condition}
+            </span>
+            <span className="mt-0.5 flex items-center gap-0.5 text-[8px] font-semibold uppercase tracking-wider text-slate-600">
+              <MapPin className="h-2 w-2" aria-hidden="true" />
+              {weather.location}
             </span>
           </div>
         </div>

@@ -1,7 +1,7 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useId, useMemo, useState } from "react"
-import { CloudRain, Eye, Moon, Sun, Sunrise } from "lucide-react"
+import { CloudRain, Eye, Gauge, Moon, Sun, Sunrise, Wind } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
@@ -11,21 +11,20 @@ interface SunriseSunsetTileProps {
   uv?: number
   precip_mm?: number
   vis_km?: number
+  humidity?: number
+  wind_kph?: number
+  pressure_mb?: number
 }
 
 function parseAMPM(timeStr: string | null | undefined): Date | null {
   if (!timeStr) return null
-
   const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
   if (!match) return null
-
   let hour = parseInt(match[1], 10)
   const minute = parseInt(match[2], 10)
   const ampm = match[3].toUpperCase()
-
   if (ampm === "PM" && hour !== 12) hour += 12
   if (ampm === "AM" && hour === 12) hour = 0
-
   const date = new Date()
   date.setHours(hour, minute, 0, 0)
   return date
@@ -56,91 +55,109 @@ function cubicBezierPoint(
   p3: [number, number],
 ): [number, number] {
   const mt = 1 - t
-  const x =
-    mt * mt * mt * p0[0] +
-    3 * mt * mt * t * p1[0] +
-    3 * mt * t * t * p2[0] +
-    t * t * t * p3[0]
-  const y =
-    mt * mt * mt * p0[1] +
-    3 * mt * mt * t * p1[1] +
-    3 * mt * t * t * p2[1] +
-    t * t * t * p3[1]
+  const x = mt*mt*mt*p0[0] + 3*mt*mt*t*p1[0] + 3*mt*t*t*p2[0] + t*t*t*p3[0]
+  const y = mt*mt*mt*p0[1] + 3*mt*mt*t*p1[1] + 3*mt*t*t*p2[1] + t*t*t*p3[1]
   return [x, y]
 }
 
 export function SunriseSunsetTile({
-  sunrise,
-  sunset,
-  uv,
-  precip_mm,
-  vis_km,
+  sunrise, sunset, uv, precip_mm, vis_km, humidity, wind_kph, pressure_mb,
 }: SunriseSunsetTileProps) {
   const [nowEpoch, setNowEpoch] = useState<number | null>(null)
+  const [activeSet, setActiveSet] = useState(0)  // 0 = Set A, 1 = Set B
+  const [visible, setVisible] = useState(true)   // opacity for fade transition
   const uniqueId = useId().replace(/:/g, "")
 
   useEffect(() => {
     const updateClock = () => setNowEpoch(Date.now())
     updateClock()
-
     const timer = window.setInterval(updateClock, 60_000)
     return () => window.clearInterval(timer)
   }, [])
 
+  // 5-second carousel with 280ms opacity fade
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setVisible(false)
+      window.setTimeout(() => {
+        setActiveSet((prev) => (prev === 0 ? 1 : 0))
+        setVisible(true)
+      }, 280)
+    }, 5000)
+    return () => window.clearInterval(interval)
+  }, [])
+
   const sunriseDate = useMemo(() => parseAMPM(sunrise), [sunrise])
-  const sunsetDate = useMemo(() => parseAMPM(sunset), [sunset])
+  const sunsetDate  = useMemo(() => parseAMPM(sunset),  [sunset])
   const now = nowEpoch === null ? null : new Date(nowEpoch)
   const hasSunTimes = Boolean(sunriseDate && sunsetDate && sunsetDate > sunriseDate)
 
   const progress = useMemo(() => {
     if (!hasSunTimes || !now || !sunriseDate || !sunsetDate) return 0
-    const totalMs = sunsetDate.getTime() - sunriseDate.getTime()
-    const elapsedMs = now.getTime() - sunriseDate.getTime()
+    const totalMs   = sunsetDate.getTime()  - sunriseDate.getTime()
+    const elapsedMs = now.getTime()         - sunriseDate.getTime()
     return Math.max(0, Math.min(1, elapsedMs / totalMs))
   }, [hasSunTimes, now, sunriseDate, sunsetDate])
 
-  const isNight = !hasSunTimes || now === null || progress <= 0 || progress >= 1
+  const isNight   = !hasSunTimes || now === null || progress <= 0 || progress >= 1
   const daylightStr = hasSunTimes && sunriseDate && sunsetDate
     ? (() => {
-        const totalMinutes = Math.round(
-          (sunsetDate.getTime() - sunriseDate.getTime()) / 60_000,
-        )
+        const totalMinutes = Math.round((sunsetDate.getTime() - sunriseDate.getTime()) / 60_000)
         return `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
       })()
     : null
 
-  const W = 280
-  const H = 110
-  const padX = 18
-  const baseY = H - 18
-  const P0: [number, number] = [padX, baseY]
-  const P1: [number, number] = [42, 14]
-  const P2: [number, number] = [W - 42, 14]
+  const W = 280; const H = 110; const padX = 18; const baseY = H - 18
+  const P0: [number, number] = [padX,     baseY]
+  const P1: [number, number] = [42,       14]
+  const P2: [number, number] = [W - 42,   14]
   const P3: [number, number] = [W - padX, baseY]
   const arcPath = `M ${P0[0]} ${P0[1]} C ${P1[0]} ${P1[1]} ${P2[0]} ${P2[1]} ${P3[0]} ${P3[1]}`
   const [markerX, markerY] = cubicBezierPoint(progress, P0, P1, P2, P3)
-  const clipWidth = P0[0] + (P3[0] - P0[0]) * progress
-  const uvInfo = getUVLabel(uv ?? 0)
+  const clipWidth     = P0[0] + (P3[0] - P0[0]) * progress
+  const uvInfo        = getUVLabel(uv ?? 0)
   const progressClipId = `sun-progress-${uniqueId}`
-  const sunGradientId = `sun-gradient-${uniqueId}`
+  const sunGradientId  = `sun-gradient-${uniqueId}`
 
-  const metrics = [
+  // Set A â€” Humidity Â· Wind Speed Â· Pressure
+  const setA = [
     {
-      icon: <Sun className="h-[18px] w-[18px]" style={{ color: uvInfo.color }} aria-hidden="true" />,
-      value: uv !== undefined ? `${uv}` : "–",
+      icon:  <svg className="h-[18px] w-[18px] text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true"><path d="M12 2c0 0-6 6.5-6 11a6 6 0 0 0 12 0C18 8.5 12 2 12 2z"/></svg>,
+      value: humidity !== undefined ? `${humidity}%`              : "â€“",
+      label: "Humidity",
+    },
+    {
+      icon:  <Wind  className="h-[18px] w-[18px] text-slate-300" aria-hidden="true" />,
+      value: wind_kph !== undefined ? `${wind_kph} km/h`          : "â€“",
+      label: "Wind",
+    },
+    {
+      icon:  <Gauge className="h-[18px] w-[18px] text-violet-400" aria-hidden="true" />,
+      value: pressure_mb !== undefined ? `${Math.round(pressure_mb)} mb` : "â€“",
+      label: "Pressure",
+    },
+  ]
+
+  // Set B â€” UV Index Â· Rain Today Â· Visibility
+  const setB = [
+    {
+      icon:  <Sun      className="h-[18px] w-[18px]"                 style={{ color: uvInfo.color }} aria-hidden="true" />,
+      value: uv        !== undefined ? `${uv}`                        : "â€“",
       label: uvInfo.label,
     },
     {
-      icon: <CloudRain className="h-[18px] w-[18px] text-blue-400" aria-hidden="true" />,
-      value: precip_mm !== undefined ? `${precip_mm.toFixed(1)} mm` : "–",
+      icon:  <CloudRain className="h-[18px] w-[18px] text-blue-400"  aria-hidden="true" />,
+      value: precip_mm !== undefined ? `${precip_mm.toFixed(1)} mm`  : "â€“",
       label: "Rain",
     },
     {
-      icon: <Eye className="h-[18px] w-[18px] text-slate-300" aria-hidden="true" />,
-      value: vis_km !== undefined ? `${Math.round(vis_km)} km` : "–",
+      icon:  <Eye      className="h-[18px] w-[18px] text-slate-300"  aria-hidden="true" />,
+      value: vis_km    !== undefined ? `${Math.round(vis_km)} km`    : "â€“",
       label: "Visibility",
     },
   ]
+
+  const metrics = activeSet === 0 ? setA : setB
 
   return (
     <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-0 text-white shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl">
@@ -169,6 +186,7 @@ export function SunriseSunsetTile({
       <Separator className="bg-white/[0.06]" />
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 px-3 py-2">
+        {/* Ï€-arc SVG */}
         <div className="flex min-h-0 flex-1 items-center justify-center">
           <svg
             viewBox={`0 0 ${W} ${H}`}
@@ -182,36 +200,18 @@ export function SunriseSunsetTile({
                 <rect x="0" y="-20" width={clipWidth} height={H + 40} />
               </clipPath>
               <linearGradient id={sunGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#f97316" />
+                <stop offset="0%"   stopColor="#f97316" />
                 <stop offset="100%" stopColor="#fbbf24" />
               </linearGradient>
             </defs>
 
-            <line
-              x1={P0[0] - 8}
-              y1={baseY}
-              x2={P3[0] + 8}
-              y2={baseY}
-              stroke="rgba(255,255,255,0.07)"
-              strokeWidth="1"
-              strokeDasharray="3 6"
-            />
-            <path
-              d={arcPath}
-              fill="none"
-              stroke="rgba(255,255,255,0.14)"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-            />
+            <line x1={P0[0]-8} y1={baseY} x2={P3[0]+8} y2={baseY}
+              stroke="rgba(255,255,255,0.07)" strokeWidth="1" strokeDasharray="3 6" />
+            <path d={arcPath} fill="none" stroke="rgba(255,255,255,0.14)"
+              strokeWidth="1.8" strokeLinecap="round" />
             {!isNight && (
-              <path
-                d={arcPath}
-                fill="none"
-                stroke={`url(#${sunGradientId})`}
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                clipPath={`url(#${progressClipId})`}
-              />
+              <path d={arcPath} fill="none" stroke={`url(#${sunGradientId})`}
+                strokeWidth="2.2" strokeLinecap="round" clipPath={`url(#${progressClipId})`} />
             )}
 
             <circle cx={P0[0]} cy={P0[1]} r="3" fill="#f97316" opacity="0.75" />
@@ -222,47 +222,39 @@ export function SunriseSunsetTile({
                 <circle cx={markerX} cy={markerY} r="11" fill="rgba(251,191,36,0.08)" />
                 <circle cx={markerX} cy={markerY} r="6.5" fill="rgba(251,191,36,0.20)" />
                 <circle cx={markerX} cy={markerY} r="3.8" fill="#fbbf24" />
-                <circle cx={markerX} cy={markerY} r="2" fill="white" opacity="0.9" />
+                <circle cx={markerX} cy={markerY} r="2"   fill="white" opacity="0.9" />
               </>
             ) : hasSunTimes ? (
-              <Moon
-                x={markerX - 8}
-                y={markerY - 8}
-                width={16}
-                height={16}
-                strokeWidth={1.8}
-                color="#8fd3ff"
-                aria-hidden="true"
-              />
+              <Moon x={markerX-8} y={markerY-8} width={16} height={16}
+                strokeWidth={1.8} color="#8fd3ff" aria-hidden="true" />
             ) : null}
           </svg>
         </div>
 
+        {/* Sunrise / Sunset times */}
         <div className="flex shrink-0 items-end justify-between px-0.5">
           <div className="flex min-w-0 flex-col items-start">
-            <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Sunrise
-            </span>
-            <span className="mt-0.5 text-[16px] font-black leading-none text-white">
-              {formatTime(sunriseDate)}
-            </span>
+            <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sunrise</span>
+            <span className="mt-0.5 text-[16px] font-black leading-none text-white">{formatTime(sunriseDate)}</span>
           </div>
           <div className="pb-0.5 text-[9px] font-bold text-amber-400/60">
             {hasSunTimes && !isNight ? `${Math.round(progress * 100)}% daylight` : ""}
           </div>
           <div className="flex min-w-0 flex-col items-end">
-            <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Sunset
-            </span>
-            <span className="mt-0.5 text-[16px] font-black leading-none text-white">
-              {formatTime(sunsetDate)}
-            </span>
+            <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sunset</span>
+            <span className="mt-0.5 text-[16px] font-black leading-none text-white">{formatTime(sunsetDate)}</span>
           </div>
         </div>
 
         <Separator className="bg-white/[0.05]" />
 
-        <div className="grid shrink-0 grid-cols-3 items-center gap-2 py-0.5">
+        {/* Metric carousel â€” no dots, pure opacity fade */}
+        <div
+          className="grid shrink-0 grid-cols-3 items-center gap-2 py-0.5 transition-opacity duration-[280ms]"
+          style={{ opacity: visible ? 1 : 0 }}
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {metrics.map((metric) => (
             <div key={metric.label} className="flex min-w-0 flex-col items-center gap-0.5">
               {metric.icon}
@@ -279,3 +271,4 @@ export function SunriseSunsetTile({
     </Card>
   )
 }
+
