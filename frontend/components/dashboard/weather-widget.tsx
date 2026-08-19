@@ -149,19 +149,19 @@ export function WeatherWidget({
   const displayAQI = Math.round((weather.aqi_index ?? 1) * 34)
 
   return (
-    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-0 text-white shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl">
+    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl">
 
 
 
 
       <div className="flex min-h-0 flex-1 flex-col justify-between gap-1 overflow-hidden px-3 pt-2 pb-1.5">
         <div className="flex shrink-0 items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center transition-transform duration-300 hover:scale-105">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center transition-transform duration-300 hover:scale-105">
             {currentIconUrl ? (
               <img
                 src={currentIconUrl}
                 alt={weather.condition || "Current weather"}
-                className="h-8 w-8 object-contain drop-shadow-[0_0_8px_rgba(96,165,250,0.35)]"
+                className="h-11 w-11 object-contain drop-shadow-[0_0_10px_rgba(96,165,250,0.45)]"
               />
             ) : (
               <span className="text-sm text-slate-600" aria-label="Current weather icon unavailable">
@@ -212,7 +212,7 @@ export function WeatherWidget({
                         : "border border-transparent"
                     }`}
                   >
-                    <span className={`text-[8px] font-medium ${isCurrent ? "text-cyan-200" : "text-slate-400"}`}>
+                    <span className={`text-[8px] font-semibold ${isCurrent ? "text-cyan-100" : "text-slate-200"}`}>
                       {timeLabel}
                     </span>
                     <div className="flex h-4.5 items-center justify-center">
@@ -232,7 +232,7 @@ export function WeatherWidget({
                     <span className="text-[10px] font-black leading-none text-white">
                       {slot.temp_c}°
                     </span>
-                    <span className="text-[7.5px] font-bold text-blue-400">
+                    <span className="text-[7.5px] font-bold text-sky-300">
                       {slot.precip_chance}%
                     </span>
                   </div>
