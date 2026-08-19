@@ -155,8 +155,8 @@ export function SunriseSunsetTile({
 
       <div className="flex shrink-0 items-center justify-between px-3 pb-1.5 pt-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <Sunrise className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
-          <h3 className="truncate text-[11px] font-black uppercase tracking-[0.25em] text-amber-400">
+          <Sunrise className="h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden="true" />
+          <h3 className="truncate text-[11px] font-black uppercase tracking-[0.25em] text-cyan-400">
             Sunrise / Sunset
           </h3>
         </div>
