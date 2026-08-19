@@ -154,14 +154,14 @@ export function WeatherWidget({
 
 
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden px-3 pt-2.5 pb-1.5">
+      <div className="flex min-h-0 flex-1 flex-col justify-between gap-1 overflow-hidden px-3 pt-2 pb-1.5">
         <div className="flex shrink-0 items-center gap-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center transition-transform duration-300 hover:scale-105">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center transition-transform duration-300 hover:scale-105">
             {currentIconUrl ? (
               <img
                 src={currentIconUrl}
                 alt={weather.condition || "Current weather"}
-                className="h-9 w-9 object-contain drop-shadow-[0_0_8px_rgba(96,165,250,0.35)]"
+                className="h-8 w-8 object-contain drop-shadow-[0_0_8px_rgba(96,165,250,0.35)]"
               />
             ) : (
               <span className="text-sm text-slate-600" aria-label="Current weather icon unavailable">
@@ -190,7 +190,7 @@ export function WeatherWidget({
             role="region"
             aria-label="Hourly weather forecast"
             tabIndex={0}
-            className="max-h-[58px] shrink-0 overflow-x-auto overflow-y-hidden rounded-lg border border-white/[0.05] bg-white/[0.03] px-1.5 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="shrink-0 overflow-x-auto overflow-y-hidden rounded-lg border border-white/[0.05] bg-white/[0.03] px-1.5 py-1 outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             <div className="flex min-w-max items-stretch gap-1">
               {visibleHourly.map((slot, index) => {
@@ -208,19 +208,19 @@ export function WeatherWidget({
                     aria-label={`${timeLabel}: ${slot.condition || "Weather unavailable"}, ${slot.temp_c} degrees, ${slot.precip_chance}% precipitation chance`}
                     className={`flex min-w-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 text-center transition-colors ${
                       isCurrent
-                        ? "border border-cyan-400/20 bg-cyan-400/10"
+                        ? "border border-cyan-400/30 bg-cyan-400/15 backdrop-blur-sm"
                         : "border border-transparent"
                     }`}
                   >
                     <span className={`text-[8px] font-medium ${isCurrent ? "text-cyan-200" : "text-slate-400"}`}>
                       {timeLabel}
                     </span>
-                    <div className="flex h-5 items-center justify-center">
+                    <div className="flex h-4.5 items-center justify-center">
                       {iconUrl ? (
                         <img
                           src={iconUrl}
                           alt={slot.condition || "Hourly weather condition"}
-                          className="h-5 w-5 object-contain"
+                          className="h-4.5 w-4.5 object-contain"
                           loading="lazy"
                         />
                       ) : (
@@ -232,7 +232,7 @@ export function WeatherWidget({
                     <span className="text-[10px] font-black leading-none text-white">
                       {slot.temp_c}°
                     </span>
-                    <span className="text-[7px] font-bold text-blue-400">
+                    <span className="text-[7.5px] font-bold text-blue-400">
                       {slot.precip_chance}%
                     </span>
                   </div>
