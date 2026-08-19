@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react"
 import { apiClient } from "@/lib/api"
 import {
-  Cloud, CloudRain, Sun, Wind, Droplets, Thermometer,
-  Eye, Gauge, Activity, AlertCircle, RefreshCw, MapPin
+  Cloud, CloudRain, Sun,
+  Activity, AlertCircle, RefreshCw, MapPin
 } from "lucide-react"
 
 interface HourlySlot {
@@ -232,51 +232,6 @@ export function WeatherWidget({ token, onConditionChange, onWeatherLoad }: Weath
           </div>
         )}
 
-        {/* Metrics grid — 3 cols */}
-        <div className="grid grid-cols-3 gap-x-2 gap-y-1 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <Wind className="h-3 w-3 text-cyan-400 shrink-0" />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wide">Wind</span>
-              <span className="text-[11px] font-bold text-white whitespace-nowrap">{weather.wind_kph?.toFixed(0)} km/h {weather.wind_dir}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Droplets className="h-3 w-3 text-blue-400 shrink-0" />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wide">Humidity</span>
-              <span className="text-[11px] font-bold text-white">{weather.humidity}%</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Sun className="h-3 w-3 shrink-0" style={{ color: uvInfo.color }} />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wide">UV Index</span>
-              <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: uvInfo.color }}>{weather.uv} — {uvInfo.label}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <CloudRain className="h-3 w-3 text-indigo-400 shrink-0" />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wide">Rain Today</span>
-              <span className="text-[11px] font-bold text-white">{weather.precip_mm?.toFixed(1)} mm</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Eye className="h-3 w-3 text-slate-400 shrink-0" />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wide">Visibility</span>
-              <span className="text-[11px] font-bold text-white">{weather.vis_km?.toFixed(0)} km</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Gauge className="h-3 w-3 text-purple-400 shrink-0" />
-            <div className="flex flex-col leading-tight">
-              <span className="text-[8px] text-slate-500 uppercase tracking-wide">Pressure</span>
-              <span className="text-[11px] font-bold text-white">{weather.pressure_mb?.toFixed(0)} mb</span>
-            </div>
-          </div>
-        </div>
 
         {/* ── iPhone-style AQI Range Bar ───────────────── */}
         <div className="shrink-0 rounded-lg p-2 bg-white/[0.03] border border-white/[0.05]">
