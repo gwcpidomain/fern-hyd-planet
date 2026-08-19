@@ -22,6 +22,7 @@ import { BorewellMonitorCard } from "@/components/borewell-monitor-card"
 import { ForecastTile } from "@/components/dashboard/forecast-tile"
 import { SunriseSunsetTile } from "@/components/dashboard/sunrise-sunset-tile"
 import { WindMapTile } from "@/components/dashboard/wind-map-tile"
+import type { WeatherPayload } from "@/components/dashboard/weather-types"
 import dynamic from "next/dynamic"
 import { useRealtimeData } from "@/hooks/useRealtimeData"
 import { useAuth } from "@/components/auth-provider"
@@ -990,13 +991,8 @@ export function PrivateDashboard() {
     const [stars, setStars] = useState<Array<{ left: string; top: string; delay: string; duration: string }>>([])
     const [weatherBg, setWeatherBg] = useState('')
     const [rainParticles, setRainParticles] = useState<Array<{ left: string; delay: string; duration: string }>>([])
-    // Weather full data (forecast + astro + metrics) lifted from WeatherWidget
-    const [weatherFull, setWeatherFull] = useState<{
-        forecast?: any[]; sunrise?: string | null; sunset?: string | null;
-        lat?: number; lon?: number;
-        wind_kph?: number; wind_dir?: string; humidity?: number;
-        uv?: number; precip_mm?: number; vis_km?: number; pressure_mb?: number;
-    } | null>(null)
+    // Full live WeatherAPI payload lifted from WeatherWidget
+    const [weatherFull, setWeatherFull] = useState<WeatherPayload | null>(null)
 
     // Stable callback — useCallback prevents WeatherWidget from infinite-looping on every render
     const handleConditionChange = useCallback((c: string) => {
@@ -1006,14 +1002,9 @@ export function PrivateDashboard() {
         else if (lower.includes('sun') || lower.includes('clear') || lower.includes('bright')) setWeatherBg('sunny')
         else setWeatherBg('clear')
     }, [])
-    // Lift full weather payload up so ForecastTile / SunriseSunsetTile / WindMapTile can consume it
-    const handleWeatherLoad = useCallback((data: any) => {
-        setWeatherFull({
-            forecast: data.forecast, sunrise: data.sunrise, sunset: data.sunset,
-            lat: data.lat, lon: data.lon,
-            wind_kph: data.wind_kph, wind_dir: data.wind_dir, humidity: data.humidity,
-            uv: data.uv, precip_mm: data.precip_mm, vis_km: data.vis_km, pressure_mb: data.pressure_mb,
-        })
+    // Lift the typed WeatherAPI payload so each tile can consume live fields directly
+    const handleWeatherLoad = useCallback((data: WeatherPayload) => {
+        setWeatherFull(data)
     }, [])
     useEffect(() => {
         if (waterData) setMaxWaterLevel((prev) => Math.max(prev, waterData.level))
@@ -1333,13 +1324,9 @@ export function PrivateDashboard() {
                                         <SunriseSunsetTile
                                             sunrise={weatherFull?.sunrise}
                                             sunset={weatherFull?.sunset}
-                                            wind_kph={weatherFull?.wind_kph}
-                                            wind_dir={weatherFull?.wind_dir}
-                                            humidity={weatherFull?.humidity}
                                             uv={weatherFull?.uv}
                                             precip_mm={weatherFull?.precip_mm}
                                             vis_km={weatherFull?.vis_km}
-                                            pressure_mb={weatherFull?.pressure_mb}
                                         />
                                     </ErrorBoundary>
                                 </div>

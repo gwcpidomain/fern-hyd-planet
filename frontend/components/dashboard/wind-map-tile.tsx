@@ -8,16 +8,18 @@ interface WindMapTileProps {
 }
 
 export function WindMapTile({ lat, lon }: WindMapTileProps) {
-  // Default to center of India if coordinates not available yet
   const mapLat = lat ?? 17.38
   const mapLon = lon ?? 78.46
   const zoom   = 6
 
-  // Windy.com free embed — wind overlay, dark-adjusted, centered on tenant coordinates
+  // calendar= (empty) → removes play button + timeline scrubber
+  // message= → removes hover pop-ups
+  // marker=false → removes location pin
+  // menu= → removes the top-left menu/search bar
   const windyUrl =
     `https://embed.windy.com/embed2.html?lat=${mapLat}&lon=${mapLon}&detailLat=${mapLat}&detailLon=${mapLon}` +
     `&width=650&height=450&zoom=${zoom}&level=surface&overlay=wind&product=ecmwf` +
-    `&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates` +
+    `&menu=&message=&marker=false&calendar=&pressure=&type=map&location=coordinates` +
     `&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`
 
   return (
@@ -39,7 +41,7 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
         </span>
       </div>
 
-      {/* Windy embed — fills remaining space */}
+      {/* Windy embed */}
       <div className="flex-1 relative min-h-0 overflow-hidden">
         {!lat && !lon ? (
           <div className="h-full flex flex-col items-center justify-center gap-2">
@@ -47,28 +49,35 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
             <span className="text-[10px] text-slate-500">Awaiting site coordinates…</span>
           </div>
         ) : (
-          <>
+          /* Inner clip container — overflow:hidden crops the expanded iframe */
+          <div className="absolute inset-0 overflow-hidden rounded-b-xl">
             <iframe
               key={`${mapLat}-${mapLon}`}
               src={windyUrl}
-              className="absolute inset-0 w-full h-full border-0"
+              className="absolute border-0"
               style={{
+                /* Expand outwards by 45 px on every edge to push branding/search off-screen */
+                top: "-45px",
+                bottom: "-45px",
+                left: "-45px",
+                right: "-45px",
+                width: "calc(100% + 90px)",
+                height: "calc(100% + 90px)",
                 filter: "brightness(0.72) contrast(1.1) saturate(0.85)",
               }}
               allow="fullscreen"
               title="Live Wind Map"
               loading="lazy"
             />
-            {/* Dark vignette overlay to blend edges with card */}
+            {/* Vignette to seamlessly blend the cropped edges with the card */}
             <div
               className="absolute inset-0 pointer-events-none rounded-b-xl"
               style={{
-                background:
-                  "radial-gradient(ellipse at center, transparent 55%, rgba(3,6,23,0.55) 100%)",
-                boxShadow: "inset 0 0 30px 10px rgba(3,6,23,0.4)",
+                background: "radial-gradient(ellipse at center, transparent 42%, rgba(3,6,23,0.70) 100%)",
+                boxShadow: "inset 0 0 36px 14px rgba(3,6,23,0.55)",
               }}
             />
-          </>
+          </div>
         )}
       </div>
     </div>

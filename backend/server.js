@@ -889,18 +889,37 @@ app.get('/api/weather', requireDashboardAuth, async (req, res) => {
 
       // Today's forecastday object (astro + hourly)
       const todayForecast = raw.forecast?.forecastday?.[0];
-      const currentHour = new Date().getHours();
+      const nowEpoch = Math.floor(Date.now() / 1000);
 
-      // Next 6 hourly slots from current hour
-      const hourly = (todayForecast?.hour || [])
-        .filter((h) => new Date(h.time).getHours() >= currentHour)
-        .slice(0, 6)
+      // Keep the current WeatherAPI hour and every following hour across all 3 days.
+      // The epoch values are timezone-safe; do not compare server-local hour numbers.
+      const allHourly = (raw.forecast?.forecastday || [])
+        .flatMap((day) => day.hour || [])
+        .filter((h) => Number.isFinite(Number(h.time_epoch)))
+        .sort((a, b) => Number(a.time_epoch) - Number(b.time_epoch));
+
+      const currentHourIndex = allHourly.findIndex((hour, index) => {
+        const hourEpoch = Number(hour.time_epoch);
+        const nextHourEpoch = Number(allHourly[index + 1]?.time_epoch || hourEpoch + 3600);
+        return hourEpoch <= nowEpoch && nowEpoch < nextHourEpoch;
+      });
+
+      const nextHourIndex = allHourly.findIndex((hour) => Number(hour.time_epoch) > nowEpoch);
+      const hourlyStartIndex = currentHourIndex >= 0
+        ? currentHourIndex
+        : nextHourIndex >= 0
+          ? nextHourIndex
+          : 0;
+
+      const hourly = allHourly
+        .slice(hourlyStartIndex)
         .map((h) => ({
           time: h.time,
+          time_epoch: Number(h.time_epoch),
           temp_c: Math.round(h.temp_c),
           condition: h.condition?.text || '',
           icon: h.condition?.icon || '',
-          precip_chance: h.chance_of_rain || h.chance_of_snow || 0,
+          precip_chance: h.chance_of_rain ?? h.chance_of_snow ?? 0,
         }));
 
       // 3-day forecast

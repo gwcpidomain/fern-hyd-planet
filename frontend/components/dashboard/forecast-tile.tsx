@@ -1,135 +1,120 @@
 "use client"
 
 import React from "react"
-import { Sun, Droplets } from "lucide-react"
-
-interface ForecastDay {
-  date: string
-  max_c: number
-  min_c: number
-  condition: string
-  icon: string
-  rain_chance: number
-}
+import { Droplets, Sun } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import {
+  formatForecastDate,
+  normalizeWeatherIconUrl,
+  type ForecastDay,
+} from "./weather-types"
 
 interface ForecastTileProps {
   forecast?: ForecastDay[]
   isLoading?: boolean
 }
 
-function formatDate(dateStr: string, index: number): string {
-  if (index === 0) {
-    return "Today"
-  }
-  const date = new Date(dateStr)
-  const day = date.getDate()
-  const month = date.toLocaleDateString("en-IN", { month: "short" })
-  const weekday = date.toLocaleDateString("en-IN", { weekday: "short" })
-  return `${day} ${month}, ${weekday}`
-}
-
-function getIconUrl(icon: string): string {
-  if (!icon) return ""
-  // WeatherAPI returns "//cdn.weatherapi.com/..." — prepend https:
-  if (icon.startsWith("//")) return `https:${icon}`
-  if (icon.startsWith("http")) return icon
-  return `https:${icon}`
-}
-
 export function ForecastTile({ forecast, isLoading }: ForecastTileProps) {
   const days = forecast?.slice(0, 3) ?? []
+  const isEmpty = isLoading || days.length === 0
 
   return (
-    <div className="relative h-full flex flex-col overflow-hidden rounded-xl bg-[rgba(6,10,30,0.35)] backdrop-blur-2xl border border-white/[0.08] shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
-      {/* Ambient glow */}
-      <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full blur-[50px] bg-amber-500/10 pointer-events-none" />
+    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-0 text-white shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl">
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-amber-500/10 blur-[50px]" />
 
-      {/* ── Header ───────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 pt-2 pb-1.5 border-b border-white/[0.06] shrink-0">
-        <div className="flex items-center gap-1.5">
-          <Sun className="h-3.5 w-3.5 text-amber-400" />
-          <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-amber-400">
+      <div className="flex shrink-0 items-center justify-between px-3 pb-1.5 pt-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Sun className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+          <h3 className="truncate text-[11px] font-black uppercase tracking-[0.25em] text-amber-400">
             3-Day Forecast
           </h3>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="px-2 py-0.5 rounded-full bg-amber-400/15 border border-amber-400/25 text-[8.5px] font-bold text-amber-400 tracking-wide">
-            3 days
-          </span>
-        </div>
+        <Badge
+          variant="outline"
+          className="shrink-0 rounded-full border-amber-400/25 bg-amber-400/15 px-2 py-0.5 text-[8.5px] font-bold tracking-wide text-amber-400"
+        >
+          3 days
+        </Badge>
       </div>
+      <Separator className="bg-white/[0.06]" />
 
-      {/* ── Forecast rows ────────────────────────────────── */}
-      <div className="flex-1 flex flex-col justify-center px-2.5 py-2 gap-1.5">
-
-        {/* Loading state */}
-        {(isLoading || days.length === 0) && (
-          <div className="flex-1 flex items-center justify-center">
-            <span className="text-[10px] text-slate-500 tracking-wider">Forecast loading…</span>
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-1.5 px-2.5 py-2">
+        {isEmpty ? (
+          <div className="flex min-h-24 flex-1 items-center justify-center">
+            <span className="text-[10px] tracking-wider text-slate-500">
+              Forecast loading…
+            </span>
           </div>
-        )}
+        ) : (
+          days.map((day, index) => {
+            const iconUrl = normalizeWeatherIconUrl(day.icon)
 
-        {/* Data rows */}
-        {days.map((day, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] backdrop-blur-sm transition-colors hover:bg-white/[0.06]"
-          >
-            {/* Condition icon from WeatherAPI CDN */}
-            <div className="shrink-0 w-9 h-9 flex items-center justify-center">
-              {day.icon ? (
-                <img
-                  src={getIconUrl(day.icon)}
-                  alt={day.condition}
-                  className="w-9 h-9 object-contain drop-shadow-[0_0_6px_rgba(255,255,255,0.15)]"
-                  loading="lazy"
-                />
-              ) : (
-                <Sun className="h-7 w-7 text-amber-400/50" />
-              )}
-            </div>
+            return (
+              <div
+                key={day.date}
+                className="flex w-full min-w-0 items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.04] px-2.5 py-2.5 backdrop-blur-sm transition-colors hover:bg-white/[0.06] sm:gap-3"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+                  {iconUrl ? (
+                    <img
+                      src={iconUrl}
+                      alt={day.condition || "Forecast condition"}
+                      className="h-9 w-9 object-contain drop-shadow-[0_0_6px_rgba(255,255,255,0.15)]"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span
+                      className="text-[9px] font-semibold uppercase tracking-wide text-slate-600"
+                      aria-label="Forecast icon unavailable"
+                    >
+                      —
+                    </span>
+                  )}
+                </div>
 
-            {/* Temperatures */}
-            <div className="flex items-baseline gap-1.5 shrink-0">
-              <span className="text-[20px] font-black text-white leading-none">
-                {day.max_c}°
-              </span>
-              <span className="text-[12px] font-semibold text-slate-500 leading-none">
-                /{day.min_c}°
-              </span>
-            </div>
+                <div className="flex shrink-0 items-baseline gap-1.5">
+                  <span className="text-[20px] font-black leading-none text-white sm:text-[21px]">
+                    {day.max_c}°
+                  </span>
+                  <span className="text-[11px] font-semibold leading-none text-slate-500 sm:text-[12px]">
+                    {day.min_c}°
+                  </span>
+                </div>
 
-            {/* Rain chance — only if > 10% */}
-            {day.rain_chance > 10 && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                <Droplets className="h-3 w-3 text-blue-400" />
-                <span className="text-[9px] font-bold text-blue-400">{day.rain_chance}%</span>
+                {day.rain_chance > 0 && (
+                  <div className="flex shrink-0 items-center gap-0.5 text-blue-400">
+                    <Droplets className="h-3 w-3" aria-hidden="true" />
+                    <span className="text-[8px] font-bold sm:text-[9px]">
+                      {day.rain_chance}%
+                    </span>
+                  </div>
+                )}
+
+                <div className="min-w-0 flex-1" />
+
+                <div className="flex min-w-0 shrink-0 flex-col items-end">
+                  <span className="max-w-[76px] truncate text-right text-[10px] font-bold leading-tight text-slate-300 sm:max-w-none sm:text-[11px]">
+                    {formatForecastDate(day.date, index)}
+                  </span>
+                  {index === 0 && day.condition && (
+                    <span className="max-w-[76px] truncate text-right text-[8px] font-semibold uppercase tracking-wide text-amber-400/60 sm:max-w-none">
+                      {day.condition}
+                    </span>
+                  )}
+                </div>
               </div>
-            )}
-
-            {/* Spacer */}
-            <div className="flex-1" />
-
-            {/* Date on the right */}
-            <div className="flex flex-col items-end shrink-0">
-              <span className="text-[11px] font-bold text-slate-300 leading-tight whitespace-nowrap">
-                {formatDate(day.date, i)}
-              </span>
-              {i === 0 && (
-                <span className="text-[8px] text-amber-400/60 font-semibold tracking-wide uppercase">
-                  {day.condition}
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-
+            )
+          })
+        )}
       </div>
 
-      {/* ── Footer ───────────────────────────────────────── */}
-      <div className="flex items-center justify-end px-3 pb-2 shrink-0">
-        <span className="text-[8px] font-semibold text-slate-600 uppercase tracking-wider">WeatherAPI</span>
+      <div className="flex shrink-0 items-center justify-end px-3 pb-2">
+        <span className="text-[8px] font-semibold uppercase tracking-wider text-slate-600">
+          WeatherAPI
+        </span>
       </div>
-    </div>
+    </Card>
   )
 }
