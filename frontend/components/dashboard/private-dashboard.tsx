@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { AirQualityCard } from "@/components/air-quality-card"
@@ -1234,7 +1234,7 @@ export function PrivateDashboard() {
                     {/* View Switcher - Standard window scrolling on mobile for stability */}
                     <main className="flex-1 overflow-x-hidden overflow-y-auto lg:overflow-hidden p-2">
                         {activeView === "dashboard" ? (
-                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[34%_33%_33%] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2">
+                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[35%_33%_32%] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2">
 
                                 {/* â”€â”€â”€ COL 1 ROW 1: Aquifer Monitor (no change) â”€â”€â”€ */}
                                 <div className="lg:col-start-1 lg:row-start-1 min-h-[250px] lg:min-h-0">

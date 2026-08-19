@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useId, useMemo, useState } from "react"
 import { CloudRain, Eye, Gauge, Moon, Sun, Sunrise, Wind } from "lucide-react"
@@ -92,14 +92,37 @@ export function SunriseSunsetTile({
   const now = nowEpoch === null ? null : new Date(nowEpoch)
   const hasSunTimes = Boolean(sunriseDate && sunsetDate && sunsetDate > sunriseDate)
 
-  const progress = useMemo(() => {
+  // Sun progress: 0 at sunrise → 1 at sunset
+  const sunProgress = useMemo(() => {
     if (!hasSunTimes || !now || !sunriseDate || !sunsetDate) return 0
-    const totalMs   = sunsetDate.getTime()  - sunriseDate.getTime()
-    const elapsedMs = now.getTime()         - sunriseDate.getTime()
+    const totalMs   = sunsetDate.getTime() - sunriseDate.getTime()
+    const elapsedMs = now.getTime()        - sunriseDate.getTime()
     return Math.max(0, Math.min(1, elapsedMs / totalMs))
   }, [hasSunTimes, now, sunriseDate, sunsetDate])
 
-  const isNight   = !hasSunTimes || now === null || progress <= 0 || progress >= 1
+  const isNight = !hasSunTimes || now === null || sunProgress <= 0 || sunProgress >= 1
+
+  // Night progress: 0 at sunset → 1 at next sunrise (moon travels left→right)
+  const nightProgress = useMemo(() => {
+    if (!hasSunTimes || !now || !sunriseDate || !sunsetDate) return 0
+    const nowMs = now.getTime()
+    // After sunset today
+    if (nowMs >= sunsetDate.getTime()) {
+      const tomorrowSunriseMs = sunriseDate.getTime() + 24 * 60 * 60 * 1000
+      const totalNight = tomorrowSunriseMs - sunsetDate.getTime()
+      return Math.max(0, Math.min(1, (nowMs - sunsetDate.getTime()) / totalNight))
+    }
+    // Before sunrise today (pre-dawn)
+    if (nowMs < sunriseDate.getTime()) {
+      const yesterdaySunsetMs = sunsetDate.getTime() - 24 * 60 * 60 * 1000
+      const totalNight = sunriseDate.getTime() - yesterdaySunsetMs
+      return Math.max(0, Math.min(1, (nowMs - yesterdaySunsetMs) / totalNight))
+    }
+    return 0
+  }, [hasSunTimes, now, sunriseDate, sunsetDate])
+
+  const activeProgress = isNight ? nightProgress : sunProgress
+
   const daylightStr = hasSunTimes && sunriseDate && sunsetDate
     ? (() => {
         const totalMinutes = Math.round((sunsetDate.getTime() - sunriseDate.getTime()) / 60_000)
@@ -113,11 +136,12 @@ export function SunriseSunsetTile({
   const P2: [number, number] = [W - 42,   14]
   const P3: [number, number] = [W - padX, baseY]
   const arcPath = `M ${P0[0]} ${P0[1]} C ${P1[0]} ${P1[1]} ${P2[0]} ${P2[1]} ${P3[0]} ${P3[1]}`
-  const [markerX, markerY] = cubicBezierPoint(progress, P0, P1, P2, P3)
-  const clipWidth     = P0[0] + (P3[0] - P0[0]) * progress
-  const uvInfo        = getUVLabel(uv ?? 0)
-  const progressClipId = `sun-progress-${uniqueId}`
+  const [markerX, markerY] = cubicBezierPoint(activeProgress, P0, P1, P2, P3)
+  const clipWidth      = P0[0] + (P3[0] - P0[0]) * activeProgress
+  const uvInfo         = getUVLabel(uv ?? 0)
+  const progressClipId = `arc-progress-${uniqueId}`
   const sunGradientId  = `sun-gradient-${uniqueId}`
+  const moonGradientId = `moon-gradient-${uniqueId}`
 
   // Set A â€” Humidity Â· Wind Speed Â· Pressure
   const setA = [
@@ -165,8 +189,8 @@ export function SunriseSunsetTile({
         className="pointer-events-none absolute inset-0 transition-all duration-[2000ms]"
         style={{
           background: isNight
-            ? "radial-gradient(ellipse at 50% 110%, rgba(79,70,229,0.10) 0%, transparent 65%)"
-            : `radial-gradient(ellipse at ${14 + progress * 72}% 30%, rgba(251,191,36,0.08) 0%, transparent 60%)`,
+            ? `radial-gradient(ellipse at ${14 + activeProgress * 72}% 60%, rgba(79,70,229,0.13) 0%, transparent 65%)`
+            : `radial-gradient(ellipse at ${14 + activeProgress * 72}% 30%, rgba(251,191,36,0.08) 0%, transparent 60%)`,
         }}
       />
 
@@ -199,24 +223,35 @@ export function SunriseSunsetTile({
               <clipPath id={progressClipId}>
                 <rect x="0" y="-20" width={clipWidth} height={H + 40} />
               </clipPath>
+              {/* Sun path: orange → amber */}
               <linearGradient id={sunGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%"   stopColor="#f97316" />
                 <stop offset="100%" stopColor="#fbbf24" />
               </linearGradient>
+              {/* Moon path: sky-blue → indigo */}
+              <linearGradient id={moonGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%"   stopColor="#38bdf8" />
+                <stop offset="100%" stopColor="#818cf8" />
+              </linearGradient>
             </defs>
 
+            {/* Horizon dashed baseline */}
             <line x1={P0[0]-8} y1={baseY} x2={P3[0]+8} y2={baseY}
               stroke="rgba(255,255,255,0.07)" strokeWidth="1" strokeDasharray="3 6" />
-            <path d={arcPath} fill="none" stroke="rgba(255,255,255,0.14)"
+            {/* Dim full arc */}
+            <path d={arcPath} fill="none" stroke="rgba(255,255,255,0.12)"
               strokeWidth="1.8" strokeLinecap="round" />
-            {!isNight && (
-              <path d={arcPath} fill="none" stroke={`url(#${sunGradientId})`}
-                strokeWidth="2.2" strokeLinecap="round" clipPath={`url(#${progressClipId})`} />
-            )}
+            {/* Active lit trail — sun is warm, moon is cool */}
+            <path d={arcPath} fill="none"
+              stroke={isNight ? `url(#${moonGradientId})` : `url(#${sunGradientId})`}
+              strokeWidth="2.2" strokeLinecap="round"
+              clipPath={`url(#${progressClipId})`} />
 
+            {/* Horizon endpoint dots */}
             <circle cx={P0[0]} cy={P0[1]} r="3" fill="#f97316" opacity="0.75" />
             <circle cx={P3[0]} cy={P3[1]} r="3" fill="#f97316" opacity="0.55" />
 
+            {/* Marker — glowing sun during day, moving moon at night */}
             {!isNight ? (
               <>
                 <circle cx={markerX} cy={markerY} r="11" fill="rgba(251,191,36,0.08)" />
@@ -224,10 +259,16 @@ export function SunriseSunsetTile({
                 <circle cx={markerX} cy={markerY} r="3.8" fill="#fbbf24" />
                 <circle cx={markerX} cy={markerY} r="2"   fill="white" opacity="0.9" />
               </>
-            ) : hasSunTimes ? (
-              <Moon x={markerX-8} y={markerY-8} width={16} height={16}
-                strokeWidth={1.8} color="#8fd3ff" aria-hidden="true" />
-            ) : null}
+            ) : (
+              <>
+                {/* Soft lunar glow halo */}
+                <circle cx={markerX} cy={markerY} r="13" fill="rgba(56,189,248,0.07)" />
+                <circle cx={markerX} cy={markerY} r="7"  fill="rgba(56,189,248,0.13)" />
+                {/* Moon icon riding the arc */}
+                <Moon x={markerX-9} y={markerY-9} width={18} height={18}
+                  strokeWidth={1.6} color="#7dd3fc" aria-hidden="true" />
+              </>
+            )}
           </svg>
         </div>
 
@@ -238,7 +279,7 @@ export function SunriseSunsetTile({
             <span className="mt-0.5 text-[16px] font-black leading-none text-white">{formatTime(sunriseDate)}</span>
           </div>
           <div className="pb-0.5 text-[9px] font-bold text-amber-400/60">
-            {hasSunTimes && !isNight ? `${Math.round(progress * 100)}% daylight` : ""}
+            {hasSunTimes && !isNight ? `${Math.round(sunProgress * 100)}% daylight` : ""}
           </div>
           <div className="flex min-w-0 flex-col items-end">
             <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sunset</span>
