@@ -109,7 +109,7 @@ export function WeatherWidget({
 
   if (loading && !weather) {
     return (
-      <Card className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-4 text-white shadow-[0_6px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+      <Card className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-4 text-white shadow-[0_6px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
         <RefreshCw className="h-6 w-6 animate-spin text-cyan-400" aria-hidden="true" />
         <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
           Loading Weather...
@@ -120,7 +120,7 @@ export function WeatherWidget({
 
   if (error && !weather) {
     return (
-      <Card className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-4 text-center text-white shadow-[0_6px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+      <Card className="flex h-full flex-col items-center justify-center gap-3 rounded-2xl border-white/[0.08] bg-[rgba(6,10,30,0.35)] p-4 text-center text-white shadow-[0_6px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
         <AlertCircle className="h-7 w-7 text-amber-400" aria-hidden="true" />
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
           WEATHER UNAVAILABLE
@@ -149,7 +149,7 @@ export function WeatherWidget({
   const displayAQI = Math.round((weather.aqi_index ?? 1) * 34)
 
   return (
-    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-xl">
+    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-2xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-xl">
 
 
 

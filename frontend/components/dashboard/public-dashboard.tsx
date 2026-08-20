@@ -168,12 +168,12 @@ export function PublicDashboard() {
                         {selectedLoc ? (
                             <button
                                 onClick={() => setSelectedLocId(null)}
-                                className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-colors group"
+                                className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-colors group"
                             >
                                 <MapPin className="h-5 w-5 text-slate-400 group-hover:text-white" />
                             </button>
                         ) : (
-                            <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-white/5 animate-pulse-slow">
+                            <div className="h-10 w-10 flex items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-white/5 animate-pulse-slow">
                                 <div className="h-4 w-4 rounded-full bg-emerald-400/80 shadow-[0_0_15px_rgba(52,211,153,0.5)]" />
                             </div>
                         )}
@@ -334,7 +334,7 @@ export function PublicDashboard() {
                                                 <div className="grid grid-cols-2 gap-4 mt-6">
                                                     {(() => {
                                                         const s = loc.online ? getAqiStatus(loc.data?.pm25 || 0) : { label: "--", color: "text-slate-500" }; return (
-                                                            <div className="bg-black/40 rounded-xl p-3 border border-white/5 text-center group-hover:border-white/10 transition-colors">
+                                                            <div className="bg-black/40 rounded-2xl p-3 border border-white/5 text-center group-hover:border-white/10 transition-colors">
                                                                 <Wind className="h-5 w-5 mx-auto text-orange-400 mb-2" />
                                                                 <div className="text-xs text-slate-500">AQI Status</div>
                                                                 <div className={`font-mono text-lg font-bold ${s.color}`}>{s.label}</div>
@@ -343,7 +343,7 @@ export function PublicDashboard() {
                                                     })()}
                                                     {(() => {
                                                         const s = loc.online ? getWaterStatus(loc.data?.ph || 0, loc.data?.tds || 0) : { label: "--", color: "text-slate-500" }; return (
-                                                            <div className="bg-black/40 rounded-xl p-3 border border-white/5 text-center group-hover:border-white/10 transition-colors">
+                                                            <div className="bg-black/40 rounded-2xl p-3 border border-white/5 text-center group-hover:border-white/10 transition-colors">
                                                                 <Droplets className="h-5 w-5 mx-auto text-blue-400 mb-2" />
                                                                 <div className="text-xs text-slate-500">Water Status</div>
                                                                 <div className={`font-mono text-lg font-bold ${s.color}`}>{s.label}</div>

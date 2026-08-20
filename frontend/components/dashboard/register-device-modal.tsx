@@ -107,7 +107,7 @@ export function RegisterDeviceModal({ isOpen, onClose, onSuccess }: RegisterDevi
 
                 <div className="p-6">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="h-10 w-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                        <div className="h-10 w-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
                             <Cpu className="h-5 w-5" />
                         </div>
                         <div>
@@ -206,7 +206,7 @@ export function RegisterDeviceModal({ isOpen, onClose, onSuccess }: RegisterDevi
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 mt-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-4 mt-4 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Register Device"}
                         </button>

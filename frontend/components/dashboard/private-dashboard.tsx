@@ -1180,7 +1180,7 @@ export function PrivateDashboard() {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setIsSidebarOpen((v) => !v)}
-                                className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-transparent bg-transparent transition-all duration-300 hover:bg-white/10"
+                                className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-transparent bg-transparent transition-all duration-300 hover:bg-white/10"
                                 aria-label="Toggle menu"
                             >
                                 <div className="relative h-5 w-5">
@@ -1369,7 +1369,7 @@ export function PrivateDashboard() {
 
                                 {/* â”€â”€â”€ COL 2 ROW 3: Sensor Status (no change) â”€â”€â”€ */}
                                 <div className="lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
-                                    <div className="relative flex h-full flex-col rounded-xl bg-[rgba(8,15,38,0.45)] backdrop-blur-xl border border-white/[0.11] shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
+                                    <div className="relative flex h-full flex-col rounded-2xl bg-[rgba(8,15,38,0.45)] backdrop-blur-xl border border-white/[0.11] shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
                                         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
                                         <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                             {(() => {
@@ -1447,7 +1447,7 @@ export function PrivateDashboard() {
                                         <div
                                             key={dev.device_id}
                                             onClick={() => dev.location_id && handleLocationSelect(dev.location_id)}
-                                            className="bg-white/5 border border-white/10 rounded-xl p-6 flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group"
+                                            className="bg-white/5 border border-white/10 rounded-2xl p-6 flex items-center justify-between hover:bg-white/10 transition-colors cursor-pointer group"
                                         >
                                             <div className="flex items-center gap-4">
                                                 <div className="h-12 w-12 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/30 transition-colors">
@@ -1485,7 +1485,7 @@ export function PrivateDashboard() {
                                         </div>
                                     ))}
                                     {myDevices.length === 0 && (
-                                        <div className="text-center py-20 bg-white/5 rounded-xl border border-dashed border-white/10">
+                                        <div className="text-center py-20 bg-white/5 rounded-2xl border border-dashed border-white/10">
                                             <p className="text-slate-400">No devices registered. Run the registration script!</p>
                                         </div>
                                     )}

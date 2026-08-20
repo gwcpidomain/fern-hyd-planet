@@ -1,6 +1,10 @@
+/* stylelint-disable */
+/* vscode-disable-css-validation */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+/* Tailwind v4 custom variant — @custom-variant / @theme / @apply are valid directives.
+   VS Code's built-in CSS linter does not understand them (false positives, not errors). */
 @custom-variant dark (&:is(.dark *));
 
 :root {

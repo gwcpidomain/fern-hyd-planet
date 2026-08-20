@@ -44,7 +44,7 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
   }
 
   return (
-    <div className="relative h-full flex flex-col overflow-hidden rounded-xl bg-[rgba(8,15,38,0.45)] backdrop-blur-xl border border-white/[0.11] shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)]">
+    <div className="relative h-full flex flex-col overflow-hidden rounded-2xl bg-[rgba(8,15,38,0.45)] backdrop-blur-xl border border-white/[0.11] shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)]">
       {/* Ambient glow */}
       <div className="absolute -left-10 -bottom-10 h-28 w-28 rounded-full blur-[60px] bg-cyan-500/10 pointer-events-none" />
 
