@@ -21,7 +21,7 @@ export function ForecastTile({ forecast, isLoading }: ForecastTileProps) {
   const isEmpty = isLoading || days.length === 0
 
   return (
-    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-xl">
+    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-xl">
 
 
       <div className="flex shrink-0 items-center justify-between px-3 pb-1.5 pt-2">

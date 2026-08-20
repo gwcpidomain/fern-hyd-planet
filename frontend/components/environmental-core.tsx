@@ -213,7 +213,7 @@ export function SpeedometerGauge({
             />
           ))}
 
-          {/* Dark separator lines */}
+          {/* Zone separators — transparent so colored arcs flow seamlessly */}
           {[0.25, 0.5, 0.75].map((tick) => {
             const angle = Math.PI - (tick * Math.PI);
             const x1 = cx + (r - 20) * Math.cos(angle);
@@ -221,7 +221,7 @@ export function SpeedometerGauge({
             const x2 = cx + (r + 20) * Math.cos(angle);
             const y2 = cy - (r + 20) * Math.sin(angle);
             return (
-              <line key={tick} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#020617" strokeWidth="4" />
+              <line key={tick} x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth="4" />
             );
           })}
 
