@@ -1,0 +1,14 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    { "name": "@tailwind",        "description": "Tailwind CSS — injects base/components/utilities layers" },
+    { "name": "@apply",           "description": "Tailwind CSS — applies utility classes inside a rule" },
+    { "name": "@layer",           "description": "Tailwind CSS — registers a custom layer" },
+    { "name": "@config",          "description": "Tailwind CSS v4 — load a config file" },
+    { "name": "@theme",           "description": "Tailwind CSS v4 — define design-token theme variables" },
+    { "name": "@custom-variant",  "description": "Tailwind CSS v4 — register a custom variant" },
+    { "name": "@source",          "description": "Tailwind CSS v4 — declare content source" },
+    { "name": "@utility",         "description": "Tailwind CSS v4 — register a custom utility" },
+    { "name": "@variant",         "description": "Tailwind CSS v4 — apply a variant inline" }
+  ]
+}
