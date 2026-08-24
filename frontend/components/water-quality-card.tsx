@@ -237,48 +237,89 @@ export function WaterQualityCard({
 
   const timeLabels = simulatedHistory.labels;
   const chartValues = (simulatedHistory as any)?.[chartMetric] || [];
+  const isOverlayChart = mode === "line-only"
+  const overlaySeries = [
+    { key: "level", yAxisID: "yLevel", ...metricConfig.level },
+    { key: "ph", yAxisID: "yPh", ...metricConfig.ph },
+    { key: "tds", yAxisID: "yTds", ...metricConfig.tds },
+    { key: "turbidity", yAxisID: "yTurbidity", ...metricConfig.turbidity },
+  ]
 
   const liveChartData = {
     labels: timeLabels,
-    datasets: [
-      {
-        label: `${cfg.label} ${cfg.unit ? `(${cfg.unit})` : ''}`,
-        data: chartValues,
-        borderColor: cfg.color,
-        backgroundColor: (context: any) => {
-          const chart = context.chart;
-          const { ctx, chartArea } = chart;
-          if (!chartArea) return cfg.bgColor;
-          const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-          const rgbMatch = cfg.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-          if (rgbMatch) {
-            const [, r, g, b] = rgbMatch;
-            gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.45)`);
-            gradient.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, 0.12)`);
-            gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-          } else {
-            gradient.addColorStop(0, cfg.bgColor);
-            gradient.addColorStop(1, 'transparent');
+    datasets: isOverlayChart
+      ? overlaySeries.map((series) => {
+          const emphasized = !activeMetric || activeMetric === series.key
+          return {
+            label: `${series.shortLabel}${series.unit ? ` (${series.unit})` : ""}`,
+            data: (simulatedHistory as any)?.[series.key] || [],
+            yAxisID: series.yAxisID,
+            borderColor: emphasized ? series.color : series.color.replace("rgb(", "rgba(").replace(")", ", 0.28)"),
+            backgroundColor: "transparent",
+            borderWidth: emphasized ? 2.2 : 1.3,
+            tension: 0.4,
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: series.color,
+            pointHoverBorderColor: "#0f172a",
+            pointHoverBorderWidth: 2,
           }
-          return gradient;
-        },
-        borderWidth: 2.5,
-        tension: 0.45,
-        fill: true,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: cfg.color,
-        pointHoverBorderColor: "#0f172a",
-        pointHoverBorderWidth: 2,
-      },
-    ],
+        })
+      : [
+          {
+            label: `${cfg.label} ${cfg.unit ? `(${cfg.unit})` : ''}`,
+            data: chartValues,
+            borderColor: cfg.color,
+            backgroundColor: (context: any) => {
+              const chart = context.chart;
+              const { ctx, chartArea } = chart;
+              if (!chartArea) return cfg.bgColor;
+              const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              const rgbMatch = cfg.color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+              if (rgbMatch) {
+                const [, r, g, b] = rgbMatch;
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.45)`);
+                gradient.addColorStop(0.55, `rgba(${r}, ${g}, ${b}, 0.12)`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+              } else {
+                gradient.addColorStop(0, cfg.bgColor);
+                gradient.addColorStop(1, 'transparent');
+              }
+              return gradient;
+            },
+            borderWidth: 2.5,
+            tension: 0.45,
+            fill: true,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: cfg.color,
+            pointHoverBorderColor: "#0f172a",
+            pointHoverBorderWidth: 2,
+          },
+        ],
   }
 
   const liveChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: "index" as const,
+      intersect: false,
+    },
     plugins: {
-      legend: { display: false },
+      legend: {
+        display: isOverlayChart,
+        position: "top" as const,
+        align: "end" as const,
+        labels: {
+          boxWidth: 8,
+          boxHeight: 8,
+          padding: 8,
+          color: "#94a3b8",
+          font: { size: 9, weight: 700 as const },
+        },
+      },
       tooltip: {
         backgroundColor: "rgba(2, 6, 23, 0.9)",
         titleColor: "#94a3b8",
@@ -286,32 +327,75 @@ export function WaterQualityCard({
         borderColor: "rgba(148, 163, 184, 0.1)",
         borderWidth: 1,
         padding: 8,
-        displayColors: false,
+        displayColors: isOverlayChart,
         callbacks: {
-          label: (context: any) => `${cfg.label}: ${context.parsed.y?.toFixed(1) ?? 'N/A'} ${cfg.unit}`,
+          label: (context: any) => {
+            if (isOverlayChart) {
+              return `${context.dataset.label}: ${context.parsed.y?.toFixed(2) ?? "N/A"}`
+            }
+            return `${cfg.label}: ${context.parsed.y?.toFixed(1) ?? 'N/A'} ${cfg.unit}`
+          },
         }
       },
     },
-    scales: {
-      x: {
-        ticks: { color: "#475569", font: { size: 9 }, maxTicksLimit: 6 },
-        grid: { display: false },
-        border: { display: false },
-      },
-      y: {
-        title: {
-          display: true,
-          text: `${cfg.label} ${cfg.unit ? `(${cfg.unit})` : ''}`,
-          color: "#64748b",
-          font: { size: 9, weight: "bold" as any }
+    scales: isOverlayChart
+      ? {
+          x: {
+            ticks: { color: "#475569", font: { size: 9 }, maxTicksLimit: 6 },
+            grid: { display: false },
+            border: { display: false },
+          },
+          yLevel: {
+            type: "linear" as const,
+            display: true,
+            position: "left" as const,
+            ticks: { display: false },
+            grace: "12%",
+            grid: { color: "rgba(148, 163, 184, 0.06)" },
+            border: { display: false },
+          },
+          yPh: {
+            type: "linear" as const,
+            display: false,
+            position: "left" as const,
+            grace: "12%",
+            grid: { drawOnChartArea: false },
+          },
+          yTds: {
+            type: "linear" as const,
+            display: false,
+            position: "right" as const,
+            grace: "12%",
+            grid: { drawOnChartArea: false },
+          },
+          yTurbidity: {
+            type: "linear" as const,
+            display: false,
+            position: "right" as const,
+            grace: "12%",
+            grid: { drawOnChartArea: false },
+          },
+        }
+      : {
+          x: {
+            ticks: { color: "#475569", font: { size: 9 }, maxTicksLimit: 6 },
+            grid: { display: false },
+            border: { display: false },
+          },
+          y: {
+            title: {
+              display: true,
+              text: `${cfg.label} ${cfg.unit ? `(${cfg.unit})` : ''}`,
+              color: "#64748b",
+              font: { size: 9, weight: "bold" as any }
+            },
+            ticks: { color: "#475569", font: { size: 9 } },
+            beginAtZero: false,
+            grace: "10%",
+            grid: { color: "rgba(148, 163, 184, 0.05)" },
+            border: { display: false },
+          },
         },
-        ticks: { color: "#475569", font: { size: 9 } },
-        beginAtZero: false,
-        grace: "10%",
-        grid: { color: "rgba(148, 163, 184, 0.05)" },
-        border: { display: false },
-      },
-    },
     animation: { duration: 500 },
   }
 
@@ -319,7 +403,7 @@ export function WaterQualityCard({
   const showTiles = !mode || mode === "full"
   const showBar = mode === "bar-only" || ((!mode || mode === "full") && !compact)
   const showLiveChart = mode === "line-only" || ((!mode || mode === "full") && !compact)
-  const cardTitle = `${cfg.shortLabel || cfg.label} Trend`
+  const cardTitle = isOverlayChart ? "Water Quality Trend" : `${cfg.shortLabel || cfg.label} Trend`
 
   const metrics = [
     {
@@ -368,7 +452,7 @@ export function WaterQualityCard({
 
   return (
     <div
-      className={`${transparent ? '' : 'relative h-full w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-900/35 p-3 backdrop-blur-2xl shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_0_30px_rgba(6,182,212,0.12)]'} group flex min-h-0 flex-col transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"
+      className={`${transparent ? '' : 'dash-tile relative h-full w-full overflow-hidden rounded-2xl border border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-3 shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)]'} group flex min-h-0 flex-col transition-all duration-200 ${isVisible ? "opacity-100" : "opacity-0"
         }`}
       style={{ transitionDelay: "100ms" }}
     >
@@ -396,13 +480,19 @@ export function WaterQualityCard({
                 { key: "tds", label: "TDS" },
                 { key: "turbidity", label: "Turbidity" },
               ].map((tab) => {
-                const isSelected = (activeMetric || "level") === tab.key;
+                const isSelected = isOverlayChart
+                  ? activeMetric === tab.key
+                  : (activeMetric || "level") === tab.key;
                 return (
                   <button
                     key={tab.key}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onMetricSelect(tab.key);
+                      if (isOverlayChart && activeMetric === tab.key) {
+                        onMetricSelect(null);
+                      } else {
+                        onMetricSelect(tab.key);
+                      }
                     }}
                     className={`px-2 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap transition-all ${
                       isSelected

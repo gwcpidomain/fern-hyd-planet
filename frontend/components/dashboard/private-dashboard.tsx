@@ -1238,7 +1238,7 @@ export function PrivateDashboard() {
                             <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[35%_33%_32%] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2.5">
 
                                 {/* â”€â”€â”€ COL 1 ROW 1: Aquifer Monitor (no change) â”€â”€â”€ */}
-                                <div className="lg:col-start-1 lg:row-start-1 min-h-[250px] lg:min-h-0">
+                                <div className="lg:col-start-1 lg:row-start-1 overflow-hidden min-h-[250px] lg:min-h-0">
                                     <ErrorBoundary title="Borewell Monitor">
                                         <BorewellMonitorCard
                                             activeBorewellIndex={activeBorewellIndex}
@@ -1369,7 +1369,7 @@ export function PrivateDashboard() {
 
                                 {/* â”€â”€â”€ COL 2 ROW 3: Sensor Status (no change) â”€â”€â”€ */}
                                 <div className="lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
-                                    <div className="relative flex h-full flex-col rounded-2xl bg-[rgba(8,15,38,0.45)] backdrop-blur-xl border border-white/[0.11] shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
+                                    <div className="dash-tile relative flex h-full flex-col rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
                                         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
                                         <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                             {(() => {

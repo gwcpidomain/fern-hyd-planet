@@ -63,7 +63,7 @@ export function AQIPollutantHub({
   return (
     <>
       <div
-        className={`relative flex h-full flex-col items-start overflow-hidden rounded-xl bg-[rgba(6,10,30,0.35)] backdrop-blur-2xl border border-white/[0.08] cursor-pointer group transition-all duration-200 hover:border-emerald-500/30 active:scale-[0.98] shadow-[0_6px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08),0_0_0_1px_rgba(124,255,154,0.05),0_0_40px_rgba(15,23,42,0.6)] ${mode === 'compact' ? 'h-full' : ''}`}
+        className={`dash-tile relative flex h-full flex-col items-start overflow-hidden rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] cursor-pointer group transition-all duration-200 hover:border-emerald-500/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] ${mode === 'compact' ? 'h-full' : ''}`}
         onClick={mode === 'compact' ? handleExpand : undefined}
       >
         {/* Header Section - Extreme Top Left */}

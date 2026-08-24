@@ -610,7 +610,7 @@ export function EnvironmentalCore({
   ]
 
   return (
-    <div className="card-vibrant card-core relative flex h-full flex-col items-center justify-start overflow-visible">
+    <div className="card-vibrant card-core relative flex h-full flex-col items-center justify-start overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 overflow-hidden rounded-2xl">
         <div className="absolute -left-1/4 -top-1/4 h-1/2 w-1/2 animate-blob rounded-full bg-emerald-500/20 blur-3xl" />

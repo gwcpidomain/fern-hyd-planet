@@ -4,18 +4,9 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ThemeProvider } from "@/components/theme-provider"
 
-const inter = {
+const nunito = {
   className: "font-sans",
-  variable: "--font-inter"
-};
-
-const exo2 = {
-  className: "font-exo2",
-  variable: "--font-exo2"
-};
-
-const spaceGrotesk = {
-  variable: "--font-space-grotesk"
+  variable: "--font-nunito"
 };
 
 export const metadata: Metadata = {
@@ -41,7 +32,7 @@ export default function RootLayout({
         {/* Google Fonts loaded in browser to avoid Next.js compiler download blocks */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Exo+2:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
         {/* Leaflet CSS — must be in global head for reliable tile rendering */}
         <link
           rel="stylesheet"
@@ -50,7 +41,7 @@ export default function RootLayout({
           crossOrigin=""
         />
       </head>
-      <body className={`${inter.className} ${exo2.variable} ${spaceGrotesk.variable} antialiased`}>
+      <body className={`${nunito.className} ${nunito.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false} disableTransitionOnChange>
           <AuthProvider>
             {children}

@@ -184,7 +184,7 @@ export function SunriseSunsetTile({
   const metrics = activeSet === 0 ? setA : setB
 
   return (
-    <Card className="relative h-full min-h-0 gap-0 overflow-hidden rounded-2xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[0_8px_40px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.22)] backdrop-blur-xl">
+    <Card className="dash-tile relative h-full min-h-0 gap-0 overflow-hidden rounded-2xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)]">
       <div
         className="pointer-events-none absolute inset-0 transition-all duration-[2000ms]"
         style={{

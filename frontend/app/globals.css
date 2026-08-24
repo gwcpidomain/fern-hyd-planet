@@ -134,7 +134,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Exo 2', 'Geist', sans-serif;
+  --font-sans: 'Nunito', 'Geist', sans-serif;
   --font-mono: 'Geist Mono', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -181,7 +181,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Exo 2', var(--font-sans), sans-serif;
+    font-family: 'Nunito', var(--font-sans), sans-serif;
     /* Deep Space Gradient Base */
     background: radial-gradient(ellipse at top,
         #0b1428 0%,
@@ -266,24 +266,22 @@
 
   /* Vibrant Card Styles */
   .card-vibrant {
-    @apply relative rounded-2xl border border-white/5 p-6;
+    @apply relative overflow-hidden rounded-2xl border border-white/5 p-6;
+    isolation: isolate;
+    transform: translateZ(0);
     background: rgba(6, 10, 30, 0.4);
-    backdrop-filter: blur(32px);
-    box-shadow:
-      0 6px 24px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 0 0 1px rgba(124, 255, 154, 0.05),
-      0 0 40px rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .card-vibrant:hover {
     box-shadow:
-      0 12px 48px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.10),
       0 0 0 1px rgba(124, 255, 154, 0.15),
-      0 0 60px rgba(124, 255, 154, 0.1);
-    transform: translateY(-2px);
+      0 0 0 rgba(124, 255, 154, 0);
+    transform: translateY(-1px);
   }
 
   .card-vibrant::before {
@@ -294,14 +292,15 @@
     right: 0;
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(124, 255, 154, 0.3), transparent);
-    border-radius: 2rem 2rem 0 0;
+    border-radius: inherit;
+    pointer-events: none;
   }
 
   .card-air::after {
     content: "";
     position: absolute;
-    inset: -1px;
-    border-radius: 1rem;
+    inset: 0;
+    border-radius: inherit;
     padding: 1px;
     background: linear-gradient(135deg, rgba(124, 255, 154, 0.2), transparent 50%, rgba(143, 211, 255, 0.1));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -314,8 +313,8 @@
   .card-core::after {
     content: "";
     position: absolute;
-    inset: -1px;
-    border-radius: 1rem;
+    inset: 0;
+    border-radius: inherit;
     padding: 1px;
     background: linear-gradient(135deg, rgba(124, 255, 154, 0.3), transparent 30%, rgba(0, 245, 255, 0.2) 70%, transparent);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -328,8 +327,8 @@
   .card-water::after {
     content: "";
     position: absolute;
-    inset: -1px;
-    border-radius: 1rem;
+    inset: 0;
+    border-radius: inherit;
     padding: 1px;
     background: linear-gradient(135deg, rgba(143, 211, 255, 0.2), transparent 50%, rgba(124, 255, 154, 0.1));
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -495,8 +494,18 @@
 /* Glassmorphism utility */
 .glass {
   background: rgba(10, 15, 40, 0.4);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Dashboard tiles: one clipped glass surface, lighter blur so the video stays readable */
+.dash-tile {
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 /* Gradient text */
@@ -576,4 +585,4 @@
   0%   { transform: translateX(0); }
   50%  { transform: translateX(8px); }
   100% { transform: translateX(0); }
-}
+}
