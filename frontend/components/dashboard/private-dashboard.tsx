@@ -19,7 +19,6 @@ import { WaterAnalysisSplit } from "@/components/analysis/water-split"
 import { BorewellHealthIndex } from "@/components/analysis/health-index"
 import { WeatherWidget } from "@/components/dashboard/weather-widget"
 import { BorewellMonitorCard } from "@/components/borewell-monitor-card"
-import { ForecastTile } from "@/components/dashboard/forecast-tile"
 import { SunriseSunsetTile } from "@/components/dashboard/sunrise-sunset-tile"
 import { WindMapTile } from "@/components/dashboard/wind-map-tile"
 import { EnvironmentIntelTile } from "@/components/dashboard/environment-intel-tile"
@@ -65,10 +64,6 @@ function timeLabelNow() {
 }
 
 // Dynamically import Global Globe
-const GlobalComparativeGlobe = dynamic(
-    () => import("@/components/globe/comparative-globe").then((mod) => mod.GlobalComparativeGlobe),
-    { ssr: false }
-)
 
 export function PrivateDashboard() {
     const { token, user, tenantId } = useAuth();

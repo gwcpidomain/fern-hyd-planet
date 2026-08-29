@@ -291,26 +291,34 @@ export function WeatherWidget({ token, onConditionChange, onWeatherLoad }: Weath
           {(weather.forecast ?? []).slice(0, 3).map((day, i) => {
             const icon = normalizeWeatherIconUrl(day.icon)
             return (
-              <div key={day.date} className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/[0.06] px-3 py-2">
-                <div className="flex items-center gap-2 min-w-0">
+              <div key={day.date} className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.04] px-3 py-2.5 shadow-[0_1px_8px_rgba(0,0,0,0.18)] backdrop-blur-sm">
+                {/* Weather icon */}
+                <div className="shrink-0 flex items-center justify-center w-10">
                   {icon ? (
-                    <img src={icon} alt={day.condition} className="h-8 w-8 object-contain drop-shadow-[0_0_6px_rgba(96,165,250,0.4)]" />
+                    <img src={icon} alt={day.condition} className="h-9 w-9 object-contain" style={{ filter: "drop-shadow(0 1px 4px rgba(96,165,250,0.3))" }} />
                   ) : (
-                    <Cloud className="h-8 w-8 text-slate-500" />
+                    <Cloud className="h-9 w-9 text-slate-500" />
                   )}
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] font-black text-white">{formatForecastDate(day.date, i)}</span>
-                    <span className="text-[8px] text-slate-400 truncate max-w-[120px]">{day.condition}</span>
-                  </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {day.rain_chance > 0 && (
-                    <span className="text-[9px] text-blue-400 font-bold">{day.rain_chance}%</span>
-                  )}
-                  <div className="flex items-baseline gap-0.5">
-                    <span className="text-[13px] font-black text-white">{day.max_c}°</span>
-                    <span className="text-[10px] text-slate-500">/{day.min_c}°</span>
+                {/* Temperatures */}
+                <div className="flex items-baseline gap-1 shrink-0">
+                  <span className="text-[22px] font-black leading-none text-white">{day.max_c}°</span>
+                  <span className="text-[13px] font-medium leading-none text-slate-500">{day.min_c}°</span>
+                </div>
+                {/* Rain % */}
+                {day.rain_chance > 0 && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <svg className="h-3 w-3 text-sky-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2C10 2 3 9.5 3 13a7 7 0 0014 0C17 9.5 10 2 10 2z"/></svg>
+                    <span className="text-[11px] font-bold text-sky-400">{day.rain_chance}%</span>
                   </div>
+                )}
+                {/* Date + Condition right */}
+                <div className="flex flex-col items-end ml-auto min-w-0 shrink-0">
+                  <span className="text-[11px] font-semibold text-white/90 whitespace-nowrap">{formatForecastDate(day.date, i)}</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.12em] truncate max-w-[100px]"
+                    style={{ color: day.rain_chance > 50 ? "#60a5fa" : day.rain_chance > 20 ? "#a78bfa" : "#94a3b8" }}>
+                    {day.condition}
+                  </span>
                 </div>
               </div>
             )
