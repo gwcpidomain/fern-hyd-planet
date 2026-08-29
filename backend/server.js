@@ -874,8 +874,8 @@ app.get('/api/weather', requireDashboardAuth, async (req, res) => {
 
     const apiKey = process.env.WEATHER_API_KEY;
     if (!apiKey) {
-      console.warn('⚠️  WEATHER_API_KEY not set — weather endpoint disabled.');
-      return res.status(503).json({ error: 'WEATHER_API_KEY environment variable not set.' });
+      console.warn('[weather] WEATHER_API_KEY not set - weather endpoint disabled.');
+      return res.status(503).json({ error: 'Weather service unavailable.' });
     }
 
     try {

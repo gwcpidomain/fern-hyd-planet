@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { AirQualityCard } from "@/components/air-quality-card"
@@ -171,7 +171,7 @@ export function PrivateDashboard() {
     const isMotorOn = !isWaterOffline && (borewells[activeBorewellIndex]?.isMotorOn || false);
     const motorRunTime = borewells[activeBorewellIndex]?.runTime || 0;
 
-    // Dynamic history limit based on active time range â€” prevents live data from truncating historical views
+    // Dynamic history limit based on active time range Ã¢â‚¬â€ prevents live data from truncating historical views
     const historyLimit = timeRange === "1h" ? 100 : timeRange === "24h" ? 300 : 1000;
 
     // Status Logic
@@ -221,7 +221,7 @@ export function PrivateDashboard() {
                 if (!currentLocOnline && anyOnline) {
                     const onlineLoc = data.find(l => l.online);
                     if (onlineLoc) {
-                        console.log(`ðŸš€ Auto-switching from offline ${currentLocation} to online ${onlineLoc.location_id}`);
+                        console.log(`Ã°Å¸Å¡â‚¬ Auto-switching from offline ${currentLocation} to online ${onlineLoc.location_id}`);
                         setCurrentLocation(onlineLoc.location_id);
 
                         // Reset data states
@@ -236,7 +236,7 @@ export function PrivateDashboard() {
                     // Initial Load Fallback
                     const firstOnline = data.find(l => l.online);
                     if (firstOnline && (!currentLocation || firstOnline.location_id !== currentLocation)) {
-                        console.log("ðŸš€ Initial Auto-select:", firstOnline.location_id);
+                        console.log("Ã°Å¸Å¡â‚¬ Initial Auto-select:", firstOnline.location_id);
                         setCurrentLocation(firstOnline.location_id);
                         currentLocOnline = true;
                     }
@@ -995,7 +995,7 @@ export function PrivateDashboard() {
     // Full live WeatherAPI payload lifted from WeatherWidget
     const [weatherFull, setWeatherFull] = useState<WeatherPayload | null>(null)
 
-    // Stable callback â€” useCallback prevents WeatherWidget from infinite-looping on every render
+    // Stable callback Ã¢â‚¬â€ useCallback prevents WeatherWidget from infinite-looping on every render
     const handleConditionChange = useCallback((c: string) => {
         const lower = c.toLowerCase()
         if (lower.includes('rain') || lower.includes('drizzle') || lower.includes('shower') || lower.includes('thunder')) setWeatherBg('rain')
@@ -1151,7 +1151,7 @@ export function PrivateDashboard() {
                             ''
                         }`}
                     />
-                    {/* Rain particles â€” rendered only when raining */}
+                    {/* Rain particles Ã¢â‚¬â€ rendered only when raining */}
                     {weatherBg === 'rain' && rainParticles.map((p, i) => (
                         <div
                             key={i}
@@ -1238,8 +1238,8 @@ export function PrivateDashboard() {
                         {activeView === "dashboard" ? (
                             <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[35%_33%_32%] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2.5">
 
-                                {/* â”€â”€â”€ COL 1 ROW 1: Aquifer Monitor (no change) â”€â”€â”€ */}
-                                <div className="lg:col-start-1 lg:row-start-1 overflow-hidden min-h-[250px] lg:min-h-0">
+                                {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 1 ROW 1: Aquifer Monitor (no change) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+                                <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 overflow-hidden min-h-[250px] lg:min-h-0">
                                     <ErrorBoundary title="Borewell Monitor">
                                         <BorewellMonitorCard
                                             activeBorewellIndex={activeBorewellIndex}
@@ -1272,15 +1272,15 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* ——— COL 2 ROW 1: Surrounding Conditions (Weather) ——— */}
-                                <div className="lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
+                                {/* â€”â€”â€” COL 2 ROW 1: Surrounding Conditions (Weather) â€”â€”â€” */}
+                                <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Surrounding Conditions">
                                         <WeatherWidget token={token} onConditionChange={handleConditionChange} onWeatherLoad={handleWeatherLoad} />
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* ——— COL 3 ROW 1: Environment Intel Hub ——— */}
-                                <div className="lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
+                                {/* â€”â€”â€” COL 3 ROW 1: Environment Intel Hub â€”â€”â€” */}
+                                <div className="order-7 lg:order-none lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Environment Intel">
                                         <EnvironmentIntelTile
                                             weather={{
@@ -1302,8 +1302,8 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* ——— COL 1 ROW 2: WQI Analysis + Pump Monitor ——— */}
-                                <div className="lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
+                                {/* â€”â€”â€” COL 1 ROW 2: WQI Analysis + Pump Monitor â€”â€”â€” */}
+                                <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Water Analysis">
                                         <WaterAnalysisSplit
                                             waterData={{
@@ -1321,8 +1321,8 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 2 ROW 2: AQI Pollutant Hub â”€â”€â”€ */}
-                                <div className="lg:col-start-2 lg:row-start-2 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
+                                {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 2 ROW 2: AQI Pollutant Hub Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+                                <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="AQI Pollutant Hub">
                                         <AQIPollutantHub
                                             data={safeAirData}
@@ -1336,8 +1336,8 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 3 ROW 2: Sunrise / Sunset â”€â”€â”€ */}
-                                <div className="lg:col-start-3 lg:row-start-2 overflow-hidden min-h-[280px] lg:min-h-0">
+                                {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 3 ROW 2: Sunrise / Sunset Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+                                <div className="order-6 lg:order-none lg:col-start-3 lg:row-start-2 overflow-hidden min-h-[280px] lg:min-h-0">
                                     <ErrorBoundary title="Sunrise Sunset">
                                         <SunriseSunsetTile
                                             sunrise={weatherFull?.sunrise}
@@ -1352,8 +1352,8 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 1 ROW 3: Water Level Trend â”€â”€â”€ */}
-                                <div className="lg:col-start-1 lg:row-start-3 overflow-hidden min-h-[250px] lg:min-h-0">
+                                {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 1 ROW 3: Water Level Trend Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+                                <div className="order-5 lg:order-none lg:col-start-1 lg:row-start-3 overflow-hidden min-h-[250px] lg:min-h-0">
                                     <ErrorBoundary title="Water Quality Card">
                                         <WaterQualityCard
                                             data={{
@@ -1384,8 +1384,8 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 2 ROW 3: Sensor Status (no change) â”€â”€â”€ */}
-                                <div className="lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
+                                {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 2 ROW 3: Sensor Status (no change) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+                                <div className="order-8 lg:order-none lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
                                     <div className="dash-tile relative flex h-full flex-col rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
                                         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
                                         <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
@@ -1444,8 +1444,8 @@ export function PrivateDashboard() {
                                     </div>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 3 ROW 3: Wind Map â”€â”€â”€ */}
-                                <div className="lg:col-start-3 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
+                                {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 3 ROW 3: Wind Map Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
+                                <div className="order-9 lg:order-none lg:col-start-3 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Wind Map">
                                         <WindMapTile
                                             lat={weatherFull?.lat ?? locationsStatus[currentLocation]?.latitude}
