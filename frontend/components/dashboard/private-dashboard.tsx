@@ -22,6 +22,7 @@ import { BorewellMonitorCard } from "@/components/borewell-monitor-card"
 import { ForecastTile } from "@/components/dashboard/forecast-tile"
 import { SunriseSunsetTile } from "@/components/dashboard/sunrise-sunset-tile"
 import { WindMapTile } from "@/components/dashboard/wind-map-tile"
+import { EnvironmentIntelTile } from "@/components/dashboard/environment-intel-tile"
 import type { WeatherPayload } from "@/components/dashboard/weather-types"
 import dynamic from "next/dynamic"
 import { useRealtimeData } from "@/hooks/useRealtimeData"
@@ -1271,21 +1272,37 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 2 ROW 1: Surrounding Conditions (Weather) â”€â”€â”€ */}
+                                {/* ——— COL 2 ROW 1: Surrounding Conditions (Weather) ——— */}
                                 <div className="lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Surrounding Conditions">
                                         <WeatherWidget token={token} onConditionChange={handleConditionChange} onWeatherLoad={handleWeatherLoad} />
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 3 ROW 1: 3-Day Forecast â”€â”€â”€ */}
+                                {/* ——— COL 3 ROW 1: Environment Intel Hub ——— */}
                                 <div className="lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
-                                    <ErrorBoundary title="3-Day Forecast">
-                                        <ForecastTile forecast={weatherFull?.forecast} />
+                                    <ErrorBoundary title="Environment Intel">
+                                        <EnvironmentIntelTile
+                                            weather={{
+                                                temp_c:     weatherFull?.temp_c,
+                                                humidity:   weatherFull?.humidity,
+                                                wind_kph:   weatherFull?.wind_kph,
+                                                wind_degree: weatherFull?.wind_degree,
+                                                gust_kph:   weatherFull?.gust_kph,
+                                                aqi_pm25:   safeAirData?.pm25,
+                                                aqi_co:     safeAirData?.co2,
+                                            }}
+                                            water={{
+                                                level:     safeWaterData?.level,
+                                                ph:        safeWaterData?.ph,
+                                                tds:       safeWaterData?.tds,
+                                                turbidity: safeWaterData?.turbidity,
+                                            }}
+                                        />
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â”€â”€â”€ COL 1 ROW 2: WQI Analysis + Pump Monitor â”€â”€â”€ */}
+                                {/* ——— COL 1 ROW 2: WQI Analysis + Pump Monitor ——— */}
                                 <div className="lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
                                     <ErrorBoundary title="Water Analysis">
                                         <WaterAnalysisSplit

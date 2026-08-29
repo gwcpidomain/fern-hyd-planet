@@ -13,8 +13,8 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
   const mapLon = lon ?? 78.46
   const zoom   = 6
 
-  // JS-based mobile detection — reliable on all browsers including Safari/Android Chrome
-  const [isMobile, setIsMobile] = useState(true)
+  // Start false (SSR-safe) — avoids hydration mismatch on server
+  const [isMobile, setIsMobile] = useState(false)
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
@@ -28,8 +28,8 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
     `&menu=&message=&marker=false&calendar=&pressure=&type=map&location=coordinates` +
     `&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`
 
-  // Desktop: expand iframe 45px each side to crop Windy branding off-screen
-  // Mobile: 100%×100% fill — negative offsets break iframe loading on phone browsers
+  // Desktop: expand iframe to crop Windy branding off-screen
+  // Mobile: no offsets — negative offsets break iframe loading on phone browsers
   const CROP = isMobile ? 0 : 45
   const iframeStyle: React.CSSProperties = {
     position: "absolute",
@@ -40,6 +40,7 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
     right:  -CROP,
     width:  isMobile ? "100%" : `calc(100% + ${CROP * 2}px)`,
     height: isMobile ? "100%" : `calc(100% + ${CROP * 2}px)`,
+    minHeight: isMobile ? "260px" : undefined,
     filter: "brightness(0.72) contrast(1.1) saturate(0.85)",
   }
 
@@ -63,7 +64,7 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
       </div>
 
       {/* Windy embed */}
-      <div className="flex-1 relative min-h-0 overflow-hidden">
+      <div className="flex-1 relative min-h-0 overflow-hidden" style={{ minHeight: isMobile ? "260px" : undefined }}>
         {!lat && !lon ? (
           <div className="h-full flex flex-col items-center justify-center gap-2">
             <Wind className="h-8 w-8 text-cyan-400/40 animate-spin" style={{ animationDuration: "3s" }} />
@@ -75,8 +76,8 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
               key={`${mapLat}-${mapLon}`}
               src={windyUrl}
               style={iframeStyle}
-              allow="fullscreen; geolocation"
-              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              allow="fullscreen; geolocation; autoplay"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-pointer-lock allow-storage-access-by-user-activation"
               title="Live Wind Map"
               loading="lazy"
             />

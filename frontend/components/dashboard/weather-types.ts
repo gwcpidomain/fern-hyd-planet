@@ -27,7 +27,9 @@ export interface WeatherPayload {
   condition: string
   condition_icon?: string | null
   wind_kph: number
+  wind_degree?: number | null
   wind_dir: string
+  gust_kph?: number | null
   humidity: number
   uv: number
   precip_mm: number
