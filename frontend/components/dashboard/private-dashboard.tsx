@@ -1231,10 +1231,10 @@ export function PrivateDashboard() {
                     {/* View Switcher - Standard window scrolling on mobile for stability */}
                     <main className="flex-1 overflow-x-hidden overflow-y-auto lg:overflow-hidden p-2">
                         {activeView === "dashboard" ? (
-                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[35%_33%_32%] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2.5">
+                            <div className="flex flex-col lg:grid lg:h-full lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] lg:grid-rows-[1fr_1fr_0.9fr] gap-4 lg:gap-2.5">
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 1 ROW 1: Aquifer Monitor (no change) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 overflow-hidden min-h-[250px] lg:min-h-0">
+                                <div className="order-1 lg:order-none lg:col-start-1 lg:row-start-1 overflow-hidden min-h-[250px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Borewell Monitor">
                                         <BorewellMonitorCard
                                             activeBorewellIndex={activeBorewellIndex}
@@ -1268,14 +1268,14 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* â€”â€”â€” COL 2 ROW 1: Surrounding Conditions (Weather) â€”â€”â€” */}
-                                <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
+                                <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Surrounding Conditions">
                                         <WeatherWidget token={token} onConditionChange={handleConditionChange} onWeatherLoad={handleWeatherLoad} />
                                     </ErrorBoundary>
                                 </div>
 
                                 {/* â€”â€”â€” COL 3 ROW 1: Environment Intel Hub â€”â€”â€” */}
-                                <div className="order-7 lg:order-none lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0">
+                                <div className="order-7 lg:order-none lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Environment Intel">
                                         <EnvironmentIntelTile
                                             weather={{
@@ -1298,7 +1298,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* â€”â€”â€” COL 1 ROW 2: WQI Analysis + Pump Monitor â€”â€”â€” */}
-                                <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0">
+                                <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Water Analysis">
                                         <WaterAnalysisSplit
                                             waterData={{
@@ -1317,7 +1317,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 2 ROW 2: AQI Pollutant Hub Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
+                                <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="AQI Pollutant Hub">
                                         <AQIPollutantHub
                                             data={safeAirData}
@@ -1332,7 +1332,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 3 ROW 2: Sunrise / Sunset Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-6 lg:order-none lg:col-start-3 lg:row-start-2 overflow-hidden min-h-[280px] lg:min-h-0">
+                                <div className="order-6 lg:order-none lg:col-start-3 lg:row-start-2 overflow-hidden min-h-[280px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Sunrise Sunset">
                                         <SunriseSunsetTile
                                             sunrise={weatherFull?.sunrise}
@@ -1348,7 +1348,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 1 ROW 3: Water Level Trend Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-5 lg:order-none lg:col-start-1 lg:row-start-3 overflow-hidden min-h-[250px] lg:min-h-0">
+                                <div className="order-5 lg:order-none lg:col-start-1 lg:row-start-3 overflow-hidden min-h-[250px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Water Quality Card">
                                         <WaterQualityCard
                                             data={{
@@ -1380,7 +1380,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 2 ROW 3: Sensor Status (no change) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-8 lg:order-none lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0">
+                                <div className="order-8 lg:order-none lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0 min-w-0">
                                     <div className="dash-tile relative flex h-full flex-col rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
                                         <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
                                         <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
@@ -1440,7 +1440,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 3 ROW 3: Wind Map Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-9 lg:order-none lg:col-start-3 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0">
+                                <div className="order-9 lg:order-none lg:col-start-3 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Wind Map">
                                         <WindMapTile
                                             lat={weatherFull?.lat ?? locationsStatus[currentLocation]?.latitude}

@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { Wind, Thermometer, Droplets, Activity } from "lucide-react"
@@ -153,19 +153,25 @@ function AmbientComfortPanel({ weather }: { weather?: WeatherData | null }) {
 
 // ── Panel 2: Wind Compass ─────────────────────────────────────────────────────
 function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
-  const deg     = weather?.wind_degree ?? 0
-  const kph     = weather?.wind_kph   ?? 0
-  const gust    = weather?.gust_kph
-  const dir     = degToCardinal(deg)
-  const scale   = windScale(kph)
-  const maxKph  = 80
-  const pct     = Math.min(kph / maxKph, 1)
+  const deg    = weather?.wind_degree ?? 0
+  const kph    = weather?.wind_kph   ?? 0
+  const gust   = weather?.gust_kph
+  const dir    = degToCardinal(deg)
+  const scale  = windScale(kph)
 
-  // Compass arrow points from center toward wind direction
-  const arrowRad = ((deg - 90) * Math.PI) / 180
-  const cx = 52; const cy = 52; const r = 36
-  const ax = cx + r * Math.cos(arrowRad)
-  const ay = cy + r * Math.sin(arrowRad)
+  // Segmented speed zones: Calm(0-12) Breeze(12-29) Moderate(29-50) Strong(50+) out of 60 max
+  const maxKph = 60
+  const pct    = Math.min(kph / maxKph, 1)
+  const segments = [
+    { label: "CALM",  end: 12  / maxKph, color: "#34d399" },
+    { label: "BREE",  end: 29  / maxKph, color: "#22d3ee" },
+    { label: "MOD",   end: 50  / maxKph, color: "#f59e0b" },
+    { label: "STR",   end: 1,            color: "#f87171" },
+  ]
+
+  // Compass: smooth needle via SVG rotate transform
+  const CX = 60; const CY = 60; const R_OUTER = 54; const R_INNER = 50
+  const NEEDLE_LEN = 40
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -182,82 +188,139 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
       </div>
 
       {/* Body: compass left, details right */}
-      <div className="flex flex-1 min-h-0 items-center gap-2 px-3 py-2">
+      <div className="flex flex-1 min-h-0 items-center gap-1 px-2 py-2">
 
-        {/* Compass SVG — left 45% */}
-        <div className="flex items-center justify-center shrink-0" style={{ width: "45%" }}>
-          <svg viewBox="0 0 104 104" width="100" height="100">
-            {/* Outer ring */}
-            <circle cx="52" cy="52" r="48" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-            {/* Tick marks */}
-            {Array.from({ length: 16 }).map((_, i) => {
-              const a = (i * 360 / 16 - 90) * Math.PI / 180
-              const isMajor = i % 4 === 0
-              const r1 = isMajor ? 38 : 41
-              const r2 = 46
+        {/* ── Compass SVG — 120×120 viewBox, ~45% width ── */}
+        <div className="flex items-center justify-center shrink-0" style={{ width: "46%" }}>
+          <svg viewBox="0 0 120 120" style={{ width: "100%", maxWidth: 118, height: "auto" }}>
+            {/* Outer decorative ring */}
+            <circle cx={CX} cy={CY} r={R_OUTER} fill="rgba(8,15,38,0.55)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.2" />
+            {/* Inner ring */}
+            <circle cx={CX} cy={CY} r={R_INNER} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" />
+
+            {/* 32 radial tick marks */}
+            {Array.from({ length: 32 }).map((_, i) => {
+              const angle   = (i * 360 / 32 - 90) * Math.PI / 180
+              const isMajor = i % 8 === 0   // N E S W
+              const isMid   = i % 4 === 0   // intercardinals
+              const rOut    = R_OUTER - 1
+              const rIn     = isMajor ? rOut - 9 : isMid ? rOut - 6 : rOut - 3.5
               return (
                 <line key={i}
-                  x1={52 + r1 * Math.cos(a)} y1={52 + r1 * Math.sin(a)}
-                  x2={52 + r2 * Math.cos(a)} y2={52 + r2 * Math.sin(a)}
-                  stroke={isMajor ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)"}
-                  strokeWidth={isMajor ? 1.5 : 0.8}
+                  x1={CX + rIn  * Math.cos(angle)} y1={CY + rIn  * Math.sin(angle)}
+                  x2={CX + rOut * Math.cos(angle)} y2={CY + rOut * Math.sin(angle)}
+                  stroke={isMajor ? "rgba(255,255,255,0.35)" : isMid ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)"}
+                  strokeWidth={isMajor ? 1.5 : isMid ? 1 : 0.6}
                 />
               )
             })}
-            {/* N E S W labels */}
-            {[["N",52,10],["E",94,55],["S",52,98],["W",10,55]].map(([lbl, lx, ly]) => (
-              <text key={lbl as string} x={lx as number} y={ly as number} textAnchor="middle" dominantBaseline="middle"
-                fontSize="9" fontWeight="700" fill={lbl === "N" ? "#22d3ee" : "rgba(255,255,255,0.45)"} letterSpacing="0.05em">
+
+            {/* N E S W cardinal labels */}
+            {([ ["N", CX, CY - R_OUTER + 13], ["E", CX + R_OUTER - 13, CY],
+                ["S", CX, CY + R_OUTER - 13], ["W", CX - R_OUTER + 13, CY] ] as [string,number,number][])
+              .map(([lbl, lx, ly]) => (
+              <text key={lbl} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
+                fontSize="9.5" fontWeight="800" letterSpacing="0.08em"
+                fill={lbl === "N" ? "#22d3ee" : "rgba(255,255,255,0.5)"}>
                 {lbl}
               </text>
             ))}
-            {/* Centre dot */}
-            <circle cx="52" cy="52" r="3" fill="rgba(255,255,255,0.15)" />
-            {/* Wind direction arrow with cyan glow */}
-            <line
-              x1="52" y1="52"
-              x2={ax} y2={ay}
-              stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round"
-              style={{ filter: "drop-shadow(0 0 4px #22d3ee)" }}
-            />
-            <circle cx={ax} cy={ay} r="3.5" fill="#22d3ee" style={{ filter: "drop-shadow(0 0 6px #22d3ee)" }} />
+
+            {/* Glowing center dot */}
+            <circle cx={CX} cy={CY} r="3.5" fill="rgba(34,211,238,0.25)" stroke="#22d3ee" strokeWidth="1" />
+
+            {/* ── Needle: rotates smoothly via CSS transition on the group ── */}
+            <g
+              transform={`rotate(${deg}, ${CX}, ${CY})`}
+              style={{ transition: "transform 0.9s cubic-bezier(0.4,0,0.2,1)" }}
+            >
+              {/* Needle shaft — points toward deg (up = 0°, right = 90°) */}
+              <line
+                x1={CX} y1={CY}
+                x2={CX} y2={CY - NEEDLE_LEN}
+                stroke="#22d3ee" strokeWidth="2.5" strokeLinecap="round"
+                style={{ filter: "drop-shadow(0 0 5px #22d3ee)" }}
+              />
+              {/* Arrowhead */}
+              <polygon
+                points={`${CX},${CY - NEEDLE_LEN - 2} ${CX - 4},${CY - NEEDLE_LEN + 6} ${CX + 4},${CY - NEEDLE_LEN + 6}`}
+                fill="#22d3ee"
+                style={{ filter: "drop-shadow(0 0 6px #22d3ee)" }}
+              />
+              {/* Tail (opposite direction, grey) */}
+              <line
+                x1={CX} y1={CY}
+                x2={CX} y2={CY + 16}
+                stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round"
+              />
+            </g>
           </svg>
         </div>
 
-        {/* Details — right 55% */}
-        <div className="flex flex-col justify-center gap-1.5 flex-1 min-w-0">
-          {/* Primary: speed + direction */}
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-[34px] font-black leading-none text-white">{Math.round(kph)}</span>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-semibold text-slate-400">km/h</span>
-              <span className="text-[14px] font-bold leading-none" style={{ color: "#22d3ee" }}>{dir}</span>
+        {/* ── Details — right 54% ── */}
+        <div className="flex flex-col justify-center gap-1.5 flex-1 min-w-0 pl-1">
+
+          {/* Hero: wind speed + direction */}
+          <div className="flex items-baseline gap-1.5 leading-none">
+            <span className="text-[38px] font-black leading-none tracking-tight text-white">{Math.round(kph)}</span>
+            <div className="flex flex-col items-start">
+              <span className="text-[10px] font-semibold text-slate-500 leading-none">km/h</span>
+              <span className="text-[15px] font-black leading-none mt-0.5" style={{ color: "#22d3ee" }}>{dir}</span>
             </div>
           </div>
 
-          {/* Scale label */}
-          <span className="text-[12px] font-medium text-slate-300 leading-tight">{scale}</span>
+          {/* Wind scale label */}
+          <span className="text-[11px] font-medium text-slate-300 leading-none">{scale}</span>
 
-          {/* Speed scale bar */}
-          <div className="relative mt-0.5">
-            <div className="h-[3px] w-full rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${pct * 100}%`, background: "linear-gradient(to right, #22d3ee, #818cf8)" }}
-              />
+          {/* Segmented speed bar with dot marker */}
+          <div className="mt-0.5">
+            {/* Zone labels */}
+            <div className="flex mb-0.5">
+              {segments.map((s, i) => (
+                <div key={i} className="flex-1 text-center">
+                  <span className="text-[6px] font-bold uppercase tracking-wide" style={{ color: kph <= (s.end * maxKph) && (i === 0 || kph > (segments[i-1]?.end ?? 0) * maxKph) ? s.color : "rgba(255,255,255,0.2)" }}>
+                    {s.label}
+                  </span>
+                </div>
+              ))}
             </div>
+            {/* Segmented track */}
+            <div className="relative h-[4px] w-full flex gap-[2px] rounded-sm overflow-visible">
+              {segments.map((s, i) => {
+                const segStart = i === 0 ? 0 : segments[i-1].end
+                const segWidth = s.end - segStart
+                const fillPct  = Math.max(0, Math.min(1, (pct - segStart) / segWidth))
+                return (
+                  <div key={i} className="relative rounded-sm overflow-hidden" style={{ flex: segWidth }}>
+                    <div className="absolute inset-0 rounded-sm" style={{ background: "rgba(255,255,255,0.07)" }} />
+                    <div className="absolute inset-y-0 left-0 rounded-sm transition-all duration-700"
+                      style={{ width: `${fillPct * 100}%`, background: s.color, opacity: 0.75 }} />
+                  </div>
+                )
+              })}
+              {/* Dot marker at current speed position */}
+              <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-white bg-white shadow-[0_0_5px_rgba(255,255,255,0.8)] transition-all duration-700 z-10"
+                style={{ left: `calc(${pct * 100}% - 5px)` }} />
+            </div>
+            {/* Min/max labels */}
             <div className="flex justify-between mt-0.5">
               <span className="text-[7px] text-slate-600">0</span>
-              <span className="text-[7px] text-slate-600">{maxKph} km/h</span>
+              <span className="text-[7px] text-slate-600">{maxKph}+ km/h</span>
             </div>
           </div>
 
-          {/* Supporting info */}
-          <div className="flex flex-col gap-0.5 mt-0.5">
+          {/* Secondary metrics — horizontal 2-column */}
+          <div className="flex gap-3 mt-0.5">
             {gust != null && (
-              <span className="text-[10px] text-slate-400">Gusts up to <span className="text-white font-semibold">{Math.round(gust)} km/h</span></span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Gusts</span>
+                <span className="text-[12px] font-black text-white leading-none">{Math.round(gust)} <span className="text-[8px] font-medium text-slate-500">km/h</span></span>
+              </div>
             )}
-            <span className="text-[10px] text-slate-500">Bearing {deg}°</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Bearing</span>
+              <span className="text-[12px] font-black text-white leading-none">{deg}<span className="text-[8px] font-medium text-slate-500">°</span></span>
+            </div>
           </div>
         </div>
       </div>
