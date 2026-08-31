@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useState } from "react"
 import { Wind, Thermometer, Droplets, Activity } from "lucide-react"
@@ -263,12 +263,12 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
           {/* Hero: wind speed + direction on one line */}
           <div className="flex items-baseline gap-1.5 leading-none">
             <span className="text-[38px] font-black leading-none tracking-tight text-white">{Math.round(kph)}</span>
-            <span className="text-[11px] font-semibold text-slate-400 leading-none">km/h</span>
+            <span className="text-[11px] font-semibold text-slate-200 leading-none">km/h</span>
             <span className="text-[18px] font-black leading-none" style={{ color: "#22d3ee" }}>{dir}</span>
           </div>
 
           {/* Wind scale label */}
-          <span className="text-[11px] font-medium text-slate-300 leading-none">{scale}</span>
+          <span className="text-[11px] font-semibold text-white leading-none">{scale}</span>
 
           {/* Segmented speed bar with dot marker */}
           <div className="mt-0.5">
@@ -276,7 +276,7 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
             <div className="flex mb-0.5">
               {segments.map((s, i) => (
                 <div key={i} className="flex-1 text-center">
-                  <span className="text-[6px] font-bold uppercase tracking-wide" style={{ color: kph <= (s.end * maxKph) && (i === 0 || kph > (segments[i-1]?.end ?? 0) * maxKph) ? s.color : "rgba(255,255,255,0.2)" }}>
+                  <span className="text-[6px] font-bold uppercase tracking-wide" style={{ color: kph <= (s.end * maxKph) && (i === 0 || kph > (segments[i-1]?.end ?? 0) * maxKph) ? s.color : "rgba(255,255,255,0.4)" }}>
                     {s.label}
                   </span>
                 </div>
@@ -302,8 +302,8 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
             </div>
             {/* Min/max labels */}
             <div className="flex justify-between mt-0.5">
-              <span className="text-[7px] text-slate-600">0</span>
-              <span className="text-[7px] text-slate-600">{maxKph}+ km/h</span>
+              <span className="text-[7px] text-slate-500">0</span>
+              <span className="text-[7px] text-slate-500">{maxKph}+ km/h</span>
             </div>
           </div>
 
@@ -311,13 +311,13 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
           <div className="flex gap-3 mt-0.5">
             {gust != null && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Wind Gusts</span>
-                <span className="text-[12px] font-black text-white leading-none">{Math.round(gust)} <span className="text-[8px] font-medium text-slate-500">km/h</span></span>
+                <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">Wind Gusts</span>
+                <span className="text-[12px] font-black text-white leading-none">{Math.round(gust)} <span className="text-[8px] font-medium text-slate-400">km/h</span></span>
               </div>
             )}
             <div className="flex flex-col min-w-0">
-              <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Direction</span>
-              <span className="text-[12px] font-black text-white leading-none">{dir} <span className="text-[9px] font-medium text-slate-400">· {deg}°</span></span>
+              <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">Direction</span>
+              <span className="text-[12px] font-black text-white leading-none">{dir} <span className="text-[9px] font-medium text-slate-200">· {deg}°</span></span>
             </div>
           </div>
         </div>
@@ -361,7 +361,7 @@ export function EnvironmentIntelTile({ weather, water }: EnvironmentIntelTilePro
       <div className={`${TILE_CLS} ${panelActive(1)}`}>
         <WindCompassPanel weather={weather} />
         <div className="flex shrink-0 items-center justify-between border-t border-white/[0.04] px-3 py-1">
-          <span className="text-[8px] text-slate-500 font-semibold">Updated from weather API</span>
+          <span className="text-[8px] text-slate-400 font-semibold">Updated from weather API</span>
           <PanelDots active={activePanel} count={PANEL_COUNT} onSelect={handleSelect} />
         </div>
       </div>
