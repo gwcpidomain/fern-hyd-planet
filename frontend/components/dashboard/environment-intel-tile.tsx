@@ -163,10 +163,10 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
   const maxKph = 60
   const pct    = Math.min(kph / maxKph, 1)
   const segments = [
-    { label: "CALM",  end: 12  / maxKph, color: "#34d399" },
-    { label: "BREE",  end: 29  / maxKph, color: "#22d3ee" },
-    { label: "MOD",   end: 50  / maxKph, color: "#f59e0b" },
-    { label: "STR",   end: 1,            color: "#f87171" },
+    { label: "CALM",     end: 12  / maxKph, color: "#34d399" },
+    { label: "LIGHT",    end: 29  / maxKph, color: "#22d3ee" },
+    { label: "MODERATE", end: 50  / maxKph, color: "#f59e0b" },
+    { label: "STRONG",   end: 1,            color: "#f87171" },
   ]
 
   // Compass: smooth needle via SVG rotate transform
@@ -260,13 +260,11 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
         {/* ── Details — right 54% ── */}
         <div className="flex flex-col justify-center gap-1.5 flex-1 min-w-0 pl-1">
 
-          {/* Hero: wind speed + direction */}
+          {/* Hero: wind speed + direction on one line */}
           <div className="flex items-baseline gap-1.5 leading-none">
             <span className="text-[38px] font-black leading-none tracking-tight text-white">{Math.round(kph)}</span>
-            <div className="flex flex-col items-start">
-              <span className="text-[10px] font-semibold text-slate-500 leading-none">km/h</span>
-              <span className="text-[15px] font-black leading-none mt-0.5" style={{ color: "#22d3ee" }}>{dir}</span>
-            </div>
+            <span className="text-[11px] font-semibold text-slate-400 leading-none">km/h</span>
+            <span className="text-[18px] font-black leading-none" style={{ color: "#22d3ee" }}>{dir}</span>
           </div>
 
           {/* Wind scale label */}
@@ -313,13 +311,13 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
           <div className="flex gap-3 mt-0.5">
             {gust != null && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Gusts</span>
+                <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Wind Gusts</span>
                 <span className="text-[12px] font-black text-white leading-none">{Math.round(gust)} <span className="text-[8px] font-medium text-slate-500">km/h</span></span>
               </div>
             )}
             <div className="flex flex-col min-w-0">
-              <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Bearing</span>
-              <span className="text-[12px] font-black text-white leading-none">{deg}<span className="text-[8px] font-medium text-slate-500">°</span></span>
+              <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-600">Direction</span>
+              <span className="text-[12px] font-black text-white leading-none">{dir} <span className="text-[9px] font-medium text-slate-400">· {deg}°</span></span>
             </div>
           </div>
         </div>
@@ -363,7 +361,7 @@ export function EnvironmentIntelTile({ weather, water }: EnvironmentIntelTilePro
       <div className={`${TILE_CLS} ${panelActive(1)}`}>
         <WindCompassPanel weather={weather} />
         <div className="flex shrink-0 items-center justify-between border-t border-white/[0.04] px-3 py-1">
-          <span className="text-[8px] text-slate-500 font-semibold">Live wind data</span>
+          <span className="text-[8px] text-slate-500 font-semibold">Updated from weather API</span>
           <PanelDots active={activePanel} count={PANEL_COUNT} onSelect={handleSelect} />
         </div>
       </div>
