@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useState } from "react"
-import { CloudRain, Eye, Gauge, Moon, Sun, Sunrise, Wind } from "lucide-react"
+import { CloudRain, Eye, Gauge, Sun, Sunrise, Wind } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
@@ -251,22 +251,33 @@ export function SunriseSunsetTile({
             <circle cx={P0[0]} cy={P0[1]} r="3" fill="#f97316" opacity="0.75" />
             <circle cx={P3[0]} cy={P3[1]} r="3" fill="#f97316" opacity="0.55" />
 
-            {/* Marker — glowing sun during day, moving moon at night */}
+            {/* Marker — glowing sun during day, moving moon at night.
+                Both markers are drawn in SVG coordinates (cx/cy or translate)
+                so they are always mathematically centered on (markerX, markerY). */}
             {!isNight ? (
+              /* ── Sun: concentric circles, all centered on (markerX, markerY) ── */
               <>
-                <circle cx={markerX} cy={markerY} r="11" fill="rgba(251,191,36,0.08)" />
-                <circle cx={markerX} cy={markerY} r="6.5" fill="rgba(251,191,36,0.20)" />
-                <circle cx={markerX} cy={markerY} r="3.8" fill="#fbbf24" />
-                <circle cx={markerX} cy={markerY} r="2"   fill="white" opacity="0.9" />
+                <circle cx={markerX} cy={markerY} r="13"  fill="rgba(251,191,36,0.06)" />
+                <circle cx={markerX} cy={markerY} r="8"   fill="rgba(251,191,36,0.18)" />
+                <circle cx={markerX} cy={markerY} r="4.5" fill="#fbbf24" />
+                <circle cx={markerX} cy={markerY} r="2.2" fill="white" opacity="0.9" />
               </>
             ) : (
+              /* ── Moon: SVG group translated to (markerX, markerY) so the crescent
+                  path is drawn relative to (0,0) — center is always exact ── */
               <>
-                {/* Soft lunar glow halo */}
                 <circle cx={markerX} cy={markerY} r="13" fill="rgba(56,189,248,0.07)" />
-                <circle cx={markerX} cy={markerY} r="7"  fill="rgba(56,189,248,0.13)" />
-                {/* Moon icon riding the arc */}
-                <Moon x={markerX-9} y={markerY-9} width={18} height={18}
-                  strokeWidth={1.6} color="#7dd3fc" aria-hidden="true" />
+                <circle cx={markerX} cy={markerY} r="7.5" fill="rgba(56,189,248,0.13)" />
+                <g transform={`translate(${markerX}, ${markerY})`}>
+                  {/* Crescent moon drawn relative to (0,0) — visually centered */}
+                  <path
+                    d="M 0 -7 A 7 7 0 0 1 0 7 A 4.5 4.5 0 0 0 0 -7 Z"
+                    fill="#7dd3fc"
+                    stroke="#7dd3fc"
+                    strokeWidth="0.5"
+                    opacity="0.95"
+                  />
+                </g>
               </>
             )}
           </svg>
