@@ -1279,7 +1279,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* â€”â€”â€” COL 3 ROW 1: Environment Intel Hub â€”â€”â€” */}
-                                <div className="order-7 lg:order-none lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
+                                <div className="order-3 lg:order-none lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Environment Intel">
                                         <EnvironmentIntelTile
                                             weather={{

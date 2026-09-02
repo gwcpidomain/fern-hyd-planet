@@ -263,13 +263,17 @@ export function SunriseSunsetTile({
                 <circle cx={markerX} cy={markerY} r="2.2" fill="white" opacity="0.9" />
               </>
             ) : (
-              /* ── Moon: cool sky-blue glow (same cx/cy math, different palette) ── */
-              <>
-                <circle cx={markerX} cy={markerY} r="13"  fill="rgba(56,189,248,0.06)" />
-                <circle cx={markerX} cy={markerY} r="8"   fill="rgba(56,189,248,0.16)" />
-                <circle cx={markerX} cy={markerY} r="4.5" fill="#7dd3fc" />
-                <circle cx={markerX} cy={markerY} r="2.2" fill="white" opacity="0.75" />
-              </>
+              /* ── Moon: cool sky-blue crescent (same cx/cy math) ── */
+              <g transform={`translate(${markerX}, ${markerY})`}>
+                <circle cx="0" cy="0" r="12" fill="rgba(56,189,248,0.08)" />
+                <circle cx="0" cy="0" r="7" fill="rgba(56,189,248,0.18)" />
+                {/* Crescent moon shape */}
+                <path
+                  d="M -2.5 -5 A 5 5 0 1 0 4.5 3 A 4 4 0 1 1 -2.5 -5 Z"
+                  fill="#7dd3fc"
+                />
+                <circle cx="3" cy="-3" r="0.8" fill="white" opacity="0.8" />
+              </g>
             )}
           </svg>
         </div>

@@ -9,14 +9,28 @@ const nunito = {
   variable: "--font-nunito"
 };
 
-export const metadata: Metadata = {
-  title: 'Fern Insights',
-  description: 'Real-time environmental monitoring dashboard for air quality and groundwater levels',
-  generator: 'v0.app',
-  icons: {
-    icon: '/favicon.png',
-    apple: '/favicon.png',
-  },
+import { headers } from "next/headers"
+
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers()
+  const host = headersList.get("host") || ""
+  const subdomain = host.split(".")[0]?.toLowerCase() || ""
+
+  const tenantTitle = subdomain === "trifecta"
+    ? "Trifecta Insights"
+    : subdomain === "fern"
+    ? "Fern Insights"
+    : "Planet Insights"
+
+  return {
+    title: tenantTitle,
+    description: `${tenantTitle} - Real-time environmental monitoring dashboard for air quality and groundwater levels`,
+    generator: "v0.app",
+    icons: {
+      icon: "/favicon.png",
+      apple: "/favicon.png",
+    },
+  }
 }
 
 import { AuthProvider } from "@/components/auth-provider";

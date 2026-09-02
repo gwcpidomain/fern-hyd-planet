@@ -167,11 +167,10 @@ export function SpeedometerGauge({
   const needleLen = 100;
   const nx = cx + needleLen * Math.cos(needleRad);
   const ny = cy - needleLen * Math.sin(needleRad);
-
   return (
-    <div className="flex flex-col items-center justify-between w-full h-full px-2 gap-1 pt-3 scale-[1.02] transform origin-center">
+    <div className="flex flex-col items-center justify-between w-full h-full px-2 gap-1 pt-1 sm:pt-3 scale-95 sm:scale-[1.02] transform origin-center max-h-[160px] sm:max-h-none overflow-hidden">
       {/* Gauge in the Center */}
-      <div className="relative h-[62%] min-h-[105px] w-full flex items-center justify-center overflow-visible">
+      <div className="relative h-[60%] sm:h-[62%] min-h-[90px] sm:min-h-[105px] w-full flex items-center justify-center overflow-visible">
         <svg viewBox="0 25 360 150" className="h-full w-full drop-shadow-[0_0_15px_rgba(30,41,59,0.3)]">
           {/* Glow filters for each zone */}
           <defs>
