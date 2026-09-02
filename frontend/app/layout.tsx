@@ -1,39 +1,26 @@
 import React from "react"
 import type { Metadata } from 'next'
+import { headers } from "next/headers"
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/components/auth-provider"
+import { DynamicTitle } from "@/components/dynamic-title"
 
 const nunito = {
   className: "font-sans",
   variable: "--font-nunito"
 };
 
-import { headers } from "next/headers"
-
-export async function generateMetadata(): Promise<Metadata> {
-  const headersList = await headers()
-  const host = headersList.get("host") || ""
-  const subdomain = host.split(".")[0]?.toLowerCase() || ""
-
-  const tenantTitle = subdomain === "trifecta"
-    ? "Trifecta Insights"
-    : subdomain === "fern"
-    ? "Fern Insights"
-    : "Planet Insights"
-
-  return {
-    title: tenantTitle,
-    description: `${tenantTitle} - Real-time environmental monitoring dashboard for air quality and groundwater levels`,
-    generator: "v0.app",
-    icons: {
-      icon: "/favicon.png",
-      apple: "/favicon.png",
-    },
-  }
+export const metadata: Metadata = {
+  title: "Planet Insights",
+  description: "Real-time environmental monitoring dashboard for air quality and groundwater levels",
+  generator: "v0.app",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
 }
-
-import { AuthProvider } from "@/components/auth-provider";
 
 export default function RootLayout({
   children,
@@ -58,6 +45,7 @@ export default function RootLayout({
       <body className={`${nunito.className} ${nunito.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false} disableTransitionOnChange>
           <AuthProvider>
+            <DynamicTitle />
             {children}
           </AuthProvider>
         </ThemeProvider>
