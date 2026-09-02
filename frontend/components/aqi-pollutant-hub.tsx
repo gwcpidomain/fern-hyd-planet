@@ -5,7 +5,7 @@ import { AirQualityCard } from "./air-quality-card"
 import { MetricHistoryChart } from "./charts/aqi-forecast-chart"
 import { PollutantDonutChart } from "./charts/pollutant-donut-chart"
 import { calculateAQI } from "@/utils/aqi-calculator"
-import { Maximize2, X, Activity, BarChart3, PieChart as PieChartIcon, ArrowDownCircle } from "lucide-react"
+import { Activity, BarChart3, PieChart as PieChartIcon, ArrowDownCircle } from "lucide-react"
 import { type TimeRange } from "@/utils/data-simulator"
 
 interface AQIPollutantHubProps {
@@ -54,17 +54,11 @@ export function AQIPollutantHub({
 
   const status = getAqiStatus(aqi)
 
-  const handleExpand = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setIsInternalExpanded(true)
-    onExpand?.()
-  }
 
   return (
     <>
       <div
-        className={`dash-tile relative flex h-full flex-col items-start overflow-hidden rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] cursor-pointer group transition-all duration-200 hover:border-emerald-500/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] ${mode === 'compact' ? 'h-full' : ''}`}
-        onClick={mode === 'compact' ? handleExpand : undefined}
+        className={`dash-tile relative flex h-full flex-col items-start overflow-hidden rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] ${mode === 'compact' ? 'h-full' : ''}`}
       >
         {/* Header Section - Extreme Top Left */}
         <div className="w-full shrink-0 px-3 pt-2 pb-1 border-b border-white/5 bg-white/[0.02] text-left">
@@ -75,12 +69,6 @@ export function AQIPollutantHub({
                 AQI Pollutant Level
               </h3>
             </div>
-            <button
-              onClick={handleExpand}
-              className="p-1 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all shrink-0"
-            >
-              <Maximize2 className="h-3 w-3" />
-            </button>
           </div>
           <div className="flex items-baseline gap-2 w-full">
             <span className={`text-2xl font-extrabold tracking-tighter ${status.color}`}>

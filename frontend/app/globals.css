@@ -229,6 +229,34 @@
 }
 
 /* =============================================
+   Nunito Weight Hierarchy System
+   Apply these to override default weights.
+   900 → major numbers (AQI 47, wind speed, borewell level)
+   700 → tile headings and card labels
+   600 → metric labels (SUNRISE, GUSTS, HUMIDITY)
+   500 → normal data text
+   400 → supporting / muted / footer text
+   ============================================= */
+@layer utilities {
+  .nw-900 { font-weight: 900; }
+  .nw-700 { font-weight: 700; }
+  .nw-600 { font-weight: 600; }
+  .nw-500 { font-weight: 500; }
+  .nw-400 { font-weight: 400; }
+
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+
+
+/* =============================================
    Leaflet + Tailwind v4 Fix
    Tailwind Preflight sets img { max-width:100%; height:auto }
    which collapses Leaflet tile <img> elements → blank map.

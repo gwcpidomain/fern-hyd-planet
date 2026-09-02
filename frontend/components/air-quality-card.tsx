@@ -213,7 +213,7 @@ export function AirQualityCard({ data, activeMetric, onMetricSelect, onExpand, i
       )}
 
       {/* Interactive Grid of Pollutants */}
-      <div className={`grid ${compact ? 'grid-cols-3 gap-1 flex-1 min-h-0' : 'grid-cols-2 gap-3 sm:grid-cols-3 flex-1 min-h-0'}`}>
+      <div className={`grid ${compact ? 'grid-cols-2 sm:grid-cols-3 gap-1 flex-1 min-h-0' : 'grid-cols-2 gap-3 sm:grid-cols-3 flex-1 min-h-0'}`}>
         {[
           { key: "pm25", label: "PM2.5", value: animatedValues.pm25.toFixed(1), unit: "µg/m³", bg: "bg-orange-500", glow: "group-hover:shadow-[0_0_8px_rgba(249,115,22,0.6)]" },
           { key: "pm10", label: "PM10", value: animatedValues.pm10.toFixed(1), unit: "µg/m³", bg: "bg-amber-400", glow: "group-hover:shadow-[0_0_8px_rgba(251,191,36,0.6)]" },

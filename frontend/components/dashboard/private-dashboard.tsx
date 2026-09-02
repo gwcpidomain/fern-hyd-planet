@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react"
 import { AirQualityCard } from "@/components/air-quality-card"
@@ -1134,9 +1134,13 @@ export function PrivateDashboard() {
                         loop
                         playsInline
                         className="absolute inset-0 h-full w-full object-cover pointer-events-none mix-blend-luminosity"
-                        src="/bg-earth.mp4"
                         style={{ filter: "brightness(0.55) contrast(1.08) saturate(0.55) hue-rotate(200deg)", opacity: 0.95 }}
-                    />
+                    >
+                        {/* WebM VP9: 1.26 MB — served to all modern browsers */}
+                        <source src="/bg-earth.webm" type="video/webm" />
+                        {/* MP4 fallback: 11.85 MB — Safari only */}
+                        <source src="/bg-earth.mp4" type="video/mp4" />
+                    </video>
                     {/* Layer 2: Weather Atmosphere (condition-reactive, 6-10% opacity) */}
                     <div
                         className={`absolute inset-0 pointer-events-none transition-all duration-[3000ms] ${

@@ -459,7 +459,7 @@ export function WaterQualityCard({
       {/* Animated background - removed to match Yearly Comparison style */}
 
       {!transparent && (
-        <div className="relative z-10 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative z-10 mb-4 flex items-center justify-between gap-2 min-w-0">
           <div className="flex items-center gap-2 shrink-0">
             <img
               src="/humidity.png"
@@ -471,9 +471,9 @@ export function WaterQualityCard({
             </h2>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Metric Selector Tabs (Replaces 1h | 24h | 7d) */}
-            <div className="flex items-center gap-1 bg-slate-900/60 p-1 rounded-lg border border-white/5 overflow-x-auto max-w-[280px] sm:max-w-none">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+            {/* Metric Selector Tabs — flex-shrink inside, horizontal scroll if needed */}
+            <div className="flex min-w-0 items-center gap-1 overflow-x-auto scrollbar-none bg-slate-900/60 p-1 rounded-lg border border-white/5">
               {[
                 { key: "level", label: "Water Level" },
                 { key: "ph", label: "pH" },

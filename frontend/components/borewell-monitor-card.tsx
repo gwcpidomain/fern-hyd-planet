@@ -149,7 +149,7 @@ export function BorewellMonitorCard({
 
       {/* BOREWELL SELECTOR TABS - SLEEK VERSION */}
       <div className="mt-auto pt-4 px-1">
-        <div className="relative h-[22px] w-full rounded-full bg-white/[0.03] border border-white/[0.05] p-1 flex items-center overflow-hidden backdrop-blur-sm group/nav">
+        <div className="relative h-[22px] w-full rounded-full bg-white/[0.03] border border-white/[0.05] p-1 flex items-center overflow-x-auto scrollbar-none backdrop-blur-sm group/nav">
           {/* Sliding Glow Indicator */}
           <div 
             className="absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-0"
