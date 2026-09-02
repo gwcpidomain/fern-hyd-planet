@@ -228,6 +228,13 @@ async function initSchema(client) {
           ON aqi_history(tenant_id, timestamp DESC)`
   ], 'write');
 
+  // Migration: ensure site_password_hash column exists on existing Turso DBs
+  try {
+    await client.execute("ALTER TABLE tenants ADD COLUMN site_password_hash TEXT");
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   // Step 2: Seed default tenants
   const tenantRow = await client.execute('SELECT COUNT(*) as cnt FROM tenants');
   if (Number(tenantRow.rows[0].cnt) === 0) {
