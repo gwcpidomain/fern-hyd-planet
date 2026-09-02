@@ -5,7 +5,7 @@ import { AirQualityCard } from "./air-quality-card"
 import { MetricHistoryChart } from "./charts/aqi-forecast-chart"
 import { PollutantDonutChart } from "./charts/pollutant-donut-chart"
 import { calculateAQI } from "@/utils/aqi-calculator"
-import { Activity, BarChart3, PieChart as PieChartIcon, ArrowDownCircle } from "lucide-react"
+import { X, Activity, BarChart3, PieChart as PieChartIcon, ArrowDownCircle } from "lucide-react"
 import { type TimeRange } from "@/utils/data-simulator"
 
 interface AQIPollutantHubProps {
