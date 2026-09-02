@@ -157,6 +157,7 @@ async function initSchema(client) {
       latitude REAL,
       longitude REAL,
       address TEXT,
+      site_password_hash TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     )`,
     `CREATE TABLE IF NOT EXISTS users (

@@ -54,6 +54,7 @@ function initTables() {
       latitude REAL,
       longitude REAL,
       address TEXT,
+      site_password_hash TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -147,6 +148,9 @@ function initTables() {
       db.run(`ALTER TABLE borewell_state ADD COLUMN ${col} ${colType}`, (err) => { /* Ignore */ });
       db.run(`ALTER TABLE readings_history ADD COLUMN ${col} ${colType}`, (err) => { /* Ignore */ });
     });
+
+    // Migration: add per-site password hash to existing tenants tables
+    db.run(`ALTER TABLE tenants ADD COLUMN site_password_hash TEXT`, () => { /* Silently ignore if already exists */ });
 
     // Time-series Indexes
     db.run(`CREATE INDEX IF NOT EXISTS idx_readings_tenant_borewell_time 

@@ -654,6 +654,7 @@ app.post('/api/auth/login', loginRateLimiter, (req, res) => {
       return res.status(401).json({ detail: "Incorrect username or password." });
     }
 
+    // Step 1: Verify user's own password
     const storedPassword = user.password;
     let passwordMatched = false;
     if (storedPassword.includes(':')) {
@@ -672,10 +673,39 @@ app.post('/api/auth/login', loginRateLimiter, (req, res) => {
       return res.status(401).json({ detail: "Incorrect username or password." });
     }
 
-    const token = generateToken(user.id, user.email, user.tenant_id);
-    res.json({ access_token: token });
+    // Step 2: Check site-level password (per-tenant access gate managed by us)
+    db.get('SELECT site_password_hash FROM tenants WHERE id = ?', [tenantId], (tenantErr, tenant) => {
+      if (tenantErr) {
+        console.error('Tenant lookup error during login:', tenantErr);
+        return res.status(500).json({ detail: "Internal server error." });
+      }
+
+      if (tenant && tenant.site_password_hash) {
+        // Site password is set — verify the submitted password also matches it
+        let siteMatched = false;
+        const sp = tenant.site_password_hash;
+        if (sp.includes(':')) {
+          const [salt, hash] = sp.split(':');
+          const checkBuf = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512');
+          const storedBuf = Buffer.from(hash, 'hex');
+          siteMatched = checkBuf.length === storedBuf.length &&
+            crypto.timingSafeEqual(checkBuf, storedBuf);
+        } else {
+          siteMatched = sp.length === password.length &&
+            crypto.timingSafeEqual(Buffer.from(sp), Buffer.from(password));
+        }
+        if (!siteMatched) {
+          return res.status(401).json({ detail: "Incorrect username or password." });
+        }
+      }
+      // Site password not set → no gate, proceed (backwards compatible)
+
+      const token = generateToken(user.id, user.email, user.tenant_id);
+      res.json({ access_token: token });
+    });
   });
 });
+
 
 // 2. User registration
 app.post('/api/auth/register', loginRateLimiter, (req, res) => {
