@@ -44,10 +44,10 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-slate-950 overflow-hidden font-sans select-none">
-      
+
       {/* --- ROTATING COSMIC EARTH BACKGROUND --- */}
       <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden pointer-events-none">
-        <div 
+        <div
           className="w-[260vh] h-[260vh] md:w-[220vh] md:h-[220vh] rounded-full bg-cover bg-center opacity-[0.45] animate-[spin_240s_linear_infinite] filter brightness-[0.75] contrast-[1.05]"
           style={{ backgroundImage: "url('/cosmic-earth.png')" }}
         />
@@ -57,10 +57,10 @@ export default function LoginPage() {
 
       {/* Auth Card Container */}
       <div className="relative z-10 w-full max-w-[390px] mx-4 animate-in fade-in zoom-in duration-500">
-        
+
         {/* Glassmorphic Form Card */}
         <div className="bg-slate-950/80 border border-emerald-500/20 backdrop-blur-2xl rounded-3xl p-8 shadow-[0_0_50px_rgba(16,185,129,0.1)]">
-          
+
           {/* Top Pulsing Green Dot */}
           <div className="flex justify-center mb-6">
             <div className="relative flex h-4 w-4 items-center justify-center">
@@ -170,12 +170,12 @@ export default function LoginPage() {
 
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 mb-5">
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Administrative Support</span>
-              <span className="text-xs text-white font-mono select-all">support@gwcinsights.com</span>
+              <span className="text-xs text-white font-mono select-all">gwcpidomain09@gmail.com</span>
             </div>
 
             <div className="flex gap-2">
               <a
-                href="mailto:support@gwcinsights.com?subject=Access%20Request%20-%20Planet%20Insights"
+                href="mailto:gwcpidomain09@gmail.com?subject=Access%20Request%20-%20Planet%20Insights"
                 className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-center text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
               >
                 <Mail className="h-3.5 w-3.5" />

@@ -148,7 +148,7 @@ export function SpeedometerGauge({
   // Needle angle: semi-circle from 180° (left) to 0° (right)
   const needleAngle = 180 - (ratio * 180);
 
-  const cx = 175, cy = 160, r = 130;
+  const cx = 180, cy = 160, r = 130;
 
   // Helper: arc path for a zone
   function arcPath(fromRatio: number, toRatio: number) {
@@ -168,10 +168,10 @@ export function SpeedometerGauge({
   const nx = cx + needleLen * Math.cos(needleRad);
   const ny = cy - needleLen * Math.sin(needleRad);
   return (
-    <div className="flex flex-col items-center justify-between w-full h-full px-2 gap-0.5 pt-1.5 sm:pt-2 scale-95 sm:scale-100 transform origin-center">
+    <div className="flex flex-col items-center justify-between w-full h-full px-2 gap-0.5 pt-2 sm:pt-2.5 scale-95 sm:scale-100 transform origin-center">
       {/* Gauge in the Center */}
-      <div className="relative h-[55%] min-h-[80px] sm:min-h-[95px] w-full flex items-center justify-center overflow-visible mt-1 sm:mt-1.5">
-        <svg viewBox="0 25 360 150" className="h-full w-full drop-shadow-[0_0_15px_rgba(30,41,59,0.3)]">
+      <div className="relative h-[55%] min-h-[85px] sm:min-h-[100px] w-full flex items-center justify-center overflow-visible mt-2 sm:mt-2.5">
+        <svg viewBox="0 0 360 185" className="h-full w-full drop-shadow-[0_0_15px_rgba(30,41,59,0.3)]">
           {/* Glow filters for each zone */}
           <defs>
             {zones.map((z) => (
@@ -238,10 +238,10 @@ export function SpeedometerGauge({
           <circle cx={cx} cy={cy} r="7" fill="#38bdf8" />
 
           {/* Zone labels */}
-          <text x="50" y="170" textAnchor="start" className="text-[10.5px] font-bold" fill="#ef4444">CHARGING</text>
-          <text x="135" y="75" textAnchor="middle" className="text-[10.5px] font-bold" fill="#eab308">LOW</text>
-          <text x="215" y="75" textAnchor="middle" className="text-[10.5px] font-bold" fill="#3b82f6">MID</text>
-          <text x="310" y="170" textAnchor="end" className="text-[10.5px] font-bold" fill="#22c55e">HIGH</text>
+          <text x="42" y="175" textAnchor="start" className="text-[13px] font-black tracking-wider" fill="#ef4444">CHARGING</text>
+          <text x="130" y="75" textAnchor="middle" className="text-[13.5px] font-black tracking-wider" fill="#eab308">LOW</text>
+          <text x="230" y="75" textAnchor="middle" className="text-[13.5px] font-black tracking-wider" fill="#3b82f6">MID</text>
+          <text x="318" y="175" textAnchor="end" className="text-[13px] font-black tracking-wider" fill="#22c55e">HIGH</text>
         </svg>
       </div>
 
