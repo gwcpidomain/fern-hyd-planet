@@ -31,14 +31,14 @@ export function WaterAnalysisSplit({ waterData, maxWaterLevel, waterStatus, isMo
       </div>
 
       {/* Right: Pump Monitor (50%) */}
-      <div className="w-full h-[180px] lg:h-auto lg:w-[50%] shrink-0 pt-1 px-2 pb-2 flex flex-col overflow-hidden">
+      <div className="w-full h-[200px] lg:h-auto lg:w-[50%] shrink-0 pt-1 px-2 pb-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex items-center justify-center gap-1.5 mb-1.5 border-b border-white/10 pb-1 w-full">
           <Gauge className="h-3.5 w-3.5 text-cyan-400" />
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.20em] text-cyan-400">
             Pump Monitor
           </h3>
         </div>
-        <div className="flex-1 w-full flex items-center justify-center">
+        <div className="flex-1 min-h-0 w-full flex items-center justify-center">
           <SpeedometerGauge
             value={Number.isFinite(waterData?.level ?? 0) ? Number((waterData?.level ?? 0).toFixed(2)) : 0}
             maxValue={Number.isFinite(maxWaterLevel) ? Number(maxWaterLevel.toFixed(2)) : 0}

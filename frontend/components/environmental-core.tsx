@@ -168,9 +168,9 @@ export function SpeedometerGauge({
   const nx = cx + needleLen * Math.cos(needleRad);
   const ny = cy - needleLen * Math.sin(needleRad);
   return (
-    <div className="flex flex-col items-center justify-between w-full h-full px-2 gap-1 pt-1 sm:pt-3 scale-95 sm:scale-[1.02] transform origin-center max-h-[160px] sm:max-h-none overflow-hidden">
+    <div className="flex flex-col items-center justify-between w-full h-full px-2 gap-0.5 pt-0.5 sm:pt-1 scale-95 sm:scale-100 transform origin-center">
       {/* Gauge in the Center */}
-      <div className="relative h-[60%] sm:h-[62%] min-h-[90px] sm:min-h-[105px] w-full flex items-center justify-center overflow-visible">
+      <div className="relative h-[55%] min-h-[80px] sm:min-h-[95px] w-full flex items-center justify-center overflow-visible">
         <svg viewBox="0 25 360 150" className="h-full w-full drop-shadow-[0_0_15px_rgba(30,41,59,0.3)]">
           {/* Glow filters for each zone */}
           <defs>
@@ -238,29 +238,29 @@ export function SpeedometerGauge({
           <circle cx={cx} cy={cy} r="7" fill="#38bdf8" />
 
           {/* Zone labels */}
-          <text x="50" y="170" textAnchor="start" className="text-[12px] font-black" fill="#ef4444">CHARGING</text>
-          <text x="135" y="75" textAnchor="middle" className="text-[12px] font-black" fill="#eab308">LOW</text>
-          <text x="215" y="75" textAnchor="middle" className="text-[12px] font-black" fill="#3b82f6">MID</text>
-          <text x="310" y="170" textAnchor="end" className="text-[12px] font-black" fill="#22c55e">HIGH</text>
+          <text x="50" y="170" textAnchor="start" className="text-[10.5px] font-bold" fill="#ef4444">CHARGING</text>
+          <text x="135" y="75" textAnchor="middle" className="text-[10.5px] font-bold" fill="#eab308">LOW</text>
+          <text x="215" y="75" textAnchor="middle" className="text-[10.5px] font-bold" fill="#3b82f6">MID</text>
+          <text x="310" y="170" textAnchor="end" className="text-[10.5px] font-bold" fill="#22c55e">HIGH</text>
         </svg>
       </div>
 
       {/* Horizontal Info Bar at the Bottom */}
-      <div className="flex flex-row justify-around items-center w-full px-2 mt-2 gap-2 relative z-10 border-t border-white/[0.05] pt-2">
+      <div className="flex flex-row justify-around items-center w-full px-2 mt-1 gap-2 relative z-10 border-t border-white/[0.05] pt-1.5 pb-0.5">
         <div className="flex flex-col items-center text-center flex-1">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-none mb-1.5">
+          <span className="text-[8.5px] font-medium text-slate-400 uppercase tracking-wider leading-none mb-1">
             IRMS
           </span>
-          <span className="text-[13px] font-black font-mono text-white leading-none whitespace-nowrap">
-            {safeIrms.toFixed(1)}<span className="text-[8.5px] font-bold text-slate-400 ml-0.5">A</span>
+          <span className="text-[12px] font-bold font-mono text-white leading-none whitespace-nowrap">
+            {safeIrms.toFixed(1)}<span className="text-[8.5px] font-normal text-slate-400 ml-0.5">A</span>
           </span>
         </div>
         <div className="flex flex-col items-center text-center flex-1">
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-none mb-1.5">
+          <span className="text-[8.5px] font-medium text-slate-400 uppercase tracking-wider leading-none mb-1">
             Status
           </span>
           <span 
-            className="text-[13px] font-black uppercase tracking-tight leading-none whitespace-nowrap"
+            className="text-[12px] font-bold uppercase tracking-tight leading-none whitespace-nowrap"
             style={{ color: activeZone.color }}
           >
             {activeStatus}

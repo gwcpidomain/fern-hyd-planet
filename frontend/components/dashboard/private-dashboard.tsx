@@ -1301,8 +1301,8 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â€”â€”â€” COL 1 ROW 2: WQI Analysis + Pump Monitor â€”â€”â€” */}
-                                <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
+                                {/* ─── COL 1 ROW 2: WQI Analysis + Pump Monitor ─── */}
+                                <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[400px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Water Analysis">
                                         <WaterAnalysisSplit
                                             waterData={{

@@ -19,7 +19,9 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (token) {
-      router.push("/");
+      router.replace("/");
+    } else {
+      router.replace("/login");
     }
   }, [token, router]);
 

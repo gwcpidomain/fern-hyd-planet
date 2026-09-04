@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
-import { User, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { User, Lock, Eye, EyeOff, AlertCircle, Mail, X, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -129,12 +130,68 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <Link href="/signup" className="text-[10px] text-slate-400 hover:text-emerald-400 transition-colors font-medium">
+            <button
+              type="button"
+              onClick={() => setShowAdminModal(true)}
+              className="text-[10px] text-slate-400 hover:text-emerald-400 transition-colors font-medium"
+            >
               Need access? Contact your admin
-            </Link>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* --- MANAGED ACCESS MODAL --- */}
+      {showAdminModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md p-6 bg-slate-950/95 border border-emerald-500/30 rounded-2xl shadow-[0_0_50px_rgba(16,185,129,0.15)] text-left">
+            <button
+              type="button"
+              onClick={() => setShowAdminModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-1"
+              aria-label="Close modal"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Managed Tenant Access</h3>
+                <p className="text-[10px] text-emerald-400 font-medium">Enterprise Provisioning</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Planet Insights accounts and sensor telemetry access are provisioned directly by property administrators. Self-registration is restricted to ensure location security and tenant isolation.
+            </p>
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 mb-5">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Administrative Support</span>
+              <span className="text-xs text-white font-mono select-all">support@gwcinsights.com</span>
+            </div>
+
+            <div className="flex gap-2">
+              <a
+                href="mailto:support@gwcinsights.com?subject=Access%20Request%20-%20Planet%20Insights"
+                className="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-center text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                <span>Email Administrator</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowAdminModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-semibold text-slate-300 transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

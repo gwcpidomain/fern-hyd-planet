@@ -89,18 +89,48 @@ function PanelDots({ active, count, onSelect }: { active: number; count: number;
   )
 }
 
+function computeWaterQualityMeta(water?: { level?: number | null; ph?: number | null; tds?: number | null; turbidity?: number | null } | null): { label: string; color: string } {
+  if (!water) return { label: "Optimal", color: "#34d399" }
+  const { ph, tds, turbidity, level } = water
+  if (ph == null && tds == null && turbidity == null && level == null) {
+    return { label: "Optimal", color: "#34d399" }
+  }
+
+  let score = 100
+  if (ph != null && (ph < 6.5 || ph > 8.5)) score -= 25
+  if (tds != null) {
+    if (tds > 500) score -= 35
+    else if (tds > 300) score -= 15
+  }
+  if (turbidity != null) {
+    if (turbidity > 5) score -= 30
+    else if (turbidity > 2) score -= 15
+  }
+  if (level != null && level < 1.0) score -= 20
+
+  if (score >= 85) return { label: "Optimal", color: "#34d399" }
+  if (score >= 65) return { label: "Good", color: "#22d3ee" }
+  if (score >= 45) return { label: "Fair", color: "#fbbf24" }
+  return { label: "Alert", color: "#f87171" }
+}
+
 // ── Panel 1: Ambient Comfort ──────────────────────────────────────────────────
-function AmbientComfortPanel({ weather }: { weather?: WeatherData | null }) {
-  const score  = computeComfortScore(weather?.temp_c, weather?.humidity, weather?.aqi_pm25)
-  const meta   = comfortMeta(score)
+function AmbientComfortPanel({ weather, water }: { 
+  weather?: WeatherData | null
+  water?: { level?: number | null; ph?: number | null; tds?: number | null; turbidity?: number | null } | null 
+}) {
+  const score     = computeComfortScore(weather?.temp_c, weather?.humidity, weather?.aqi_pm25)
+  const meta      = comfortMeta(score)
+  const waterMeta = computeWaterQualityMeta(water)
   const radius = 44
   const circ   = 2 * Math.PI * radius
   const dash   = (score / 100) * circ
 
   const metrics = [
-    { icon: <Thermometer className="h-3 w-3" />, label: "Temp",     value: weather?.temp_c     != null ? `${weather.temp_c.toFixed(1)}°C` : "—" },
-    { icon: <Droplets    className="h-3 w-3" />, label: "Humidity", value: weather?.humidity   != null ? `${weather.humidity}%`           : "—" },
-    { icon: <Activity    className="h-3 w-3" />, label: "PM2.5",    value: weather?.aqi_pm25   != null ? `${weather.aqi_pm25.toFixed(1)} µg` : "—" },
+    { icon: <Thermometer className="h-3 w-3 text-slate-400" />, label: "Temp",     value: weather?.temp_c     != null ? `${weather.temp_c.toFixed(1)}°C` : "—" },
+    { icon: <Droplets    className="h-3 w-3 text-slate-400" />, label: "Humidity", value: weather?.humidity   != null ? `${weather.humidity}%`           : "—" },
+    { icon: <Activity    className="h-3 w-3 text-slate-400" />, label: "PM2.5",    value: weather?.aqi_pm25   != null ? `${weather.aqi_pm25.toFixed(1)} µg` : "—" },
+    { icon: <Droplets    className="h-3 w-3 text-cyan-400" />,  label: "Water",    value: waterMeta.label, color: waterMeta.color },
   ]
 
   return (
@@ -135,14 +165,14 @@ function AmbientComfortPanel({ weather }: { weather?: WeatherData | null }) {
         </div>
 
         {/* Metrics column */}
-        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
           {metrics.map(m => (
-            <div key={m.label} className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5">
+            <div key={m.label} className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1">
               <div className="flex items-center gap-1.5 text-slate-400">
                 {m.icon}
-                <span className="text-[9px] font-medium uppercase tracking-wider">{m.label}</span>
+                <span className="text-[8.5px] font-medium uppercase tracking-wider">{m.label}</span>
               </div>
-              <span className="text-[11px] font-bold text-white">{m.value}</span>
+              <span className="text-[10.5px] font-bold text-white" style={m.color ? { color: m.color } : undefined}>{m.value}</span>
             </div>
           ))}
         </div>
@@ -350,7 +380,7 @@ export function EnvironmentIntelTile({ weather, water }: EnvironmentIntelTilePro
     <div className="relative w-full h-full">
       {/* Panel 1 — Ambient Comfort */}
       <div className={`${TILE_CLS} ${panelActive(0)}`}>
-        <AmbientComfortPanel weather={weather} />
+        <AmbientComfortPanel weather={weather} water={water} />
         <div className="flex shrink-0 items-center justify-between border-t border-white/[0.04] px-3 py-1">
           <span className="text-[8px] text-slate-500 font-medium">Comfort Index</span>
           <PanelDots active={activePanel} count={PANEL_COUNT} onSelect={handleSelect} />
