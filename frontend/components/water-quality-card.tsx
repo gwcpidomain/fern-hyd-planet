@@ -466,7 +466,7 @@ export function WaterQualityCard({
               alt="Water Logo"
               className="h-6 object-contain rounded-full"
             />
-            <h2 className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-[14px] sm:text-[15px] font-bold uppercase tracking-[0.15em] text-transparent whitespace-nowrap">
+            <h2 className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-[13px] sm:text-[14px] font-semibold uppercase tracking-[0.15em] text-transparent whitespace-nowrap">
               {cardTitle}
             </h2>
           </div>
@@ -494,7 +494,7 @@ export function WaterQualityCard({
                         onMetricSelect(tab.key);
                       }
                     }}
-                    className={`px-2 py-0.5 rounded text-[10px] font-black uppercase whitespace-nowrap transition-all ${
+                    className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase whitespace-nowrap transition-all ${
                       isSelected
                         ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
                         : "text-slate-500 hover:text-slate-300"

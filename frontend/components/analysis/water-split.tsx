@@ -21,7 +21,7 @@ export function WaterAnalysisSplit({ waterData, maxWaterLevel, waterStatus, isMo
       <div className="w-full h-[200px] lg:h-auto lg:w-[50%] shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 pt-1 px-3 pb-2 flex flex-col">
         <div className="flex items-center justify-center gap-1.5 mb-1.5 border-b border-white/10 pb-1">
           <Droplets className="h-3.5 w-3.5 text-cyan-400" />
-          <h3 className="text-[12px] font-black uppercase tracking-[0.25em] text-cyan-400">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.20em] text-cyan-400">
             WQI Analysis
           </h3>
         </div>
@@ -34,7 +34,7 @@ export function WaterAnalysisSplit({ waterData, maxWaterLevel, waterStatus, isMo
       <div className="w-full h-[180px] lg:h-auto lg:w-[50%] shrink-0 pt-1 px-2 pb-2 flex flex-col overflow-hidden">
         <div className="flex items-center justify-center gap-1.5 mb-1.5 border-b border-white/10 pb-1 w-full">
           <Gauge className="h-3.5 w-3.5 text-cyan-400" />
-          <h3 className="text-[12px] font-black uppercase justify-center tracking-[0.25em] text-cyan-400">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.20em] text-cyan-400">
             Pump Monitor
           </h3>
         </div>

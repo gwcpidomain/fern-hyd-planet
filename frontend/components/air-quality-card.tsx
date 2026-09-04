@@ -235,18 +235,18 @@ export function AirQualityCard({ data, activeMetric, onMetricSelect, onExpand, i
           >
             <div className="relative z-10 flex flex-col justify-between h-full">
               <div className="flex items-start justify-between">
-                <span className={`${compact ? 'text-[10.5px]' : 'text-[12.5px]'} uppercase tracking-[0.15em] font-black transition-colors ${activeMetric === item.key ? "text-emerald-300" : "text-slate-500"
+                <span className={`${compact ? 'text-[10.5px]' : 'text-[12.5px]'} uppercase tracking-[0.15em] font-semibold transition-colors ${activeMetric === item.key ? "text-emerald-300" : "text-slate-500"
                   }`}>
                   {item.label}
                 </span>
                 <div className={`w-2 h-2 rounded-full ${item.bg} ${item.glow} transition-all duration-300 shadow-sm`} />
               </div>
               <div className={`${compact ? 'mt-0.5' : 'mt-1.5'} flex items-baseline gap-1`}>
-                <span className={`${compact ? 'text-2xl' : 'text-4xl'} font-black font-mono tracking-tighter transition-all duration-300 ${activeMetric === item.key ? "text-white" : "text-slate-100"
+                <span className={`${compact ? 'text-2xl' : 'text-4xl'} font-bold font-mono tracking-tighter transition-all duration-300 ${activeMetric === item.key ? "text-white" : "text-slate-100"
                   }`}>
                   {item.value}
                 </span>
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">{item.unit}</span>
+                <span className="text-[11px] font-medium text-slate-500 uppercase tracking-tighter">{item.unit}</span>
               </div>
             </div>
             {activeMetric === item.key && (

@@ -65,16 +65,16 @@ export function AQIPollutantHub({
           <div className="flex items-center justify-between mb-1 w-full">
             <div className="flex items-center gap-2">
               <img src="/LOGOS/AQI.png" alt="AQI Logo" className="h-4 w-4 object-contain" />
-              <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-400">
+              <h3 className="text-[10px] font-semibold uppercase tracking-[0.15em] text-emerald-400">
                 AQI Pollutant Level
               </h3>
             </div>
           </div>
           <div className="flex items-baseline gap-2 w-full">
-            <span className={`text-2xl font-extrabold tracking-tighter ${status.color}`}>
+            <span className={`text-2xl font-bold tracking-tighter ${status.color}`}>
               {aqi}
             </span>
-            <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border border-current ${status.bg} ${status.color}`}>
+            <div className={`px-2 py-0.5 rounded-full text-[8px] font-semibold uppercase tracking-wider border border-current ${status.bg} ${status.color}`}>
               {status.text}
             </div>
           </div>

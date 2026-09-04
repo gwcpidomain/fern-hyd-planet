@@ -109,16 +109,16 @@ function AmbientComfortPanel({ weather }: { weather?: WeatherData | null }) {
       <div className="flex items-center justify-between px-3 pt-2 pb-1 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-1.5">
           <Activity className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">Ambient Comfort</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-400">Ambient Comfort</span>
         </div>
-        <span className="text-[8px] text-slate-500 font-semibold uppercase tracking-wider">Index</span>
+        <span className="text-[8px] text-slate-500 font-medium uppercase tracking-wider">Index</span>
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 min-h-0 items-center gap-4 px-4 py-3">
+      <div className="flex flex-1 min-h-0 items-center justify-center gap-4 px-3.5 py-1.5">
         {/* Score ring */}
-        <div className="relative shrink-0 flex items-center justify-center" style={{ width: 104, height: 104 }}>
-          <svg width="104" height="104" className="absolute inset-0 -rotate-90" viewBox="0 0 104 104">
+        <div className="relative shrink-0 flex items-center justify-center" style={{ width: 98, height: 98 }}>
+          <svg width="98" height="98" className="absolute inset-0 -rotate-90" viewBox="0 0 104 104">
             <circle cx="52" cy="52" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
             <circle
               cx="52" cy="52" r={radius} fill="none"
@@ -129,20 +129,20 @@ function AmbientComfortPanel({ weather }: { weather?: WeatherData | null }) {
             />
           </svg>
           <div className="relative flex flex-col items-center">
-            <span className="text-[32px] font-black leading-none text-white">{score}</span>
-            <span className="text-[9px] font-bold uppercase tracking-widest mt-0.5" style={{ color: meta.color }}>{meta.label}</span>
+            <span className="text-[28px] font-bold leading-none text-white">{score}</span>
+            <span className="text-[9px] font-medium uppercase tracking-widest mt-0.5" style={{ color: meta.color }}>{meta.label}</span>
           </div>
         </div>
 
         {/* Metrics column */}
-        <div className="flex flex-col gap-2 flex-1 min-w-0">
+        <div className="flex flex-col gap-1.5 flex-1 min-w-0">
           {metrics.map(m => (
             <div key={m.label} className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5">
               <div className="flex items-center gap-1.5 text-slate-400">
                 {m.icon}
-                <span className="text-[9px] font-semibold uppercase tracking-wider">{m.label}</span>
+                <span className="text-[9px] font-medium uppercase tracking-wider">{m.label}</span>
               </div>
-              <span className="text-[12px] font-black text-white">{m.value}</span>
+              <span className="text-[11px] font-bold text-white">{m.value}</span>
             </div>
           ))}
         </div>
@@ -179,20 +179,20 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
       <div className="flex items-center justify-between px-3 pt-2 pb-1 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-1.5">
           <Wind className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400">Wind Compass</span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-400">Wind Compass</span>
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8px] font-medium uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
           Live
         </span>
       </div>
 
       {/* Body: compass left, details right */}
-      <div className="flex flex-1 min-h-0 items-center gap-1 px-2 py-2">
+      <div className="flex flex-1 min-h-0 items-center justify-center gap-1 px-2 py-1">
 
         {/* ── Compass SVG — 120×120 viewBox, ~45% width ── */}
         <div className="flex items-center justify-center shrink-0" style={{ width: "46%" }}>
-          <svg viewBox="0 0 120 120" style={{ width: "100%", maxWidth: 118, height: "auto" }}>
+          <svg viewBox="0 0 120 120" style={{ width: "100%", maxWidth: 112, height: "auto" }}>
             {/* Outer decorative ring */}
             <circle cx={CX} cy={CY} r={R_OUTER} fill="rgba(8,15,38,0.55)" stroke="rgba(255,255,255,0.12)" strokeWidth="1.2" />
             {/* Inner ring */}
@@ -220,7 +220,7 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
                 ["S", CX, CY + R_OUTER - 13], ["W", CX - R_OUTER + 13, CY] ] as [string,number,number][])
               .map(([lbl, lx, ly]) => (
               <text key={lbl} x={lx} y={ly} textAnchor="middle" dominantBaseline="middle"
-                fontSize="9.5" fontWeight="800" letterSpacing="0.08em"
+                fontSize="9" fontWeight="600" letterSpacing="0.08em"
                 fill={lbl === "N" ? "#22d3ee" : "rgba(255,255,255,0.5)"}>
                 {lbl}
               </text>
@@ -258,17 +258,17 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
         </div>
 
         {/* ── Details — right 54% ── */}
-        <div className="flex flex-col justify-center gap-1.5 flex-1 min-w-0 pl-1">
+        <div className="flex flex-col justify-center gap-1 flex-1 min-w-0 pl-1">
 
           {/* Hero: wind speed + direction on one line */}
           <div className="flex items-baseline gap-1.5 leading-none">
-            <span className="text-[38px] font-black leading-none tracking-tight text-white">{Math.round(kph)}</span>
-            <span className="text-[11px] font-semibold text-slate-200 leading-none">km/h</span>
-            <span className="text-[18px] font-black leading-none" style={{ color: "#22d3ee" }}>{dir}</span>
+            <span className="text-[32px] font-bold leading-none tracking-tight text-white">{Math.round(kph)}</span>
+            <span className="text-[10px] font-medium text-slate-300 leading-none">km/h</span>
+            <span className="text-[16px] font-bold leading-none" style={{ color: "#22d3ee" }}>{dir}</span>
           </div>
 
           {/* Wind scale label */}
-          <span className="text-[11px] font-semibold text-white leading-none">{scale}</span>
+          <span className="text-[10.5px] font-medium text-white leading-none">{scale}</span>
 
           {/* Segmented speed bar with dot marker */}
           <div className="mt-0.5">
@@ -276,7 +276,7 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
             <div className="flex mb-0.5">
               {segments.map((s, i) => (
                 <div key={i} className="flex-1 text-center">
-                  <span className="text-[6px] font-bold uppercase tracking-wide" style={{ color: kph <= (s.end * maxKph) && (i === 0 || kph > (segments[i-1]?.end ?? 0) * maxKph) ? s.color : "rgba(255,255,255,0.4)" }}>
+                  <span className="text-[6px] font-semibold uppercase tracking-wide" style={{ color: kph <= (s.end * maxKph) && (i === 0 || kph > (segments[i-1]?.end ?? 0) * maxKph) ? s.color : "rgba(255,255,255,0.4)" }}>
                     {s.label}
                   </span>
                 </div>
@@ -311,13 +311,13 @@ function WindCompassPanel({ weather }: { weather?: WeatherData | null }) {
           <div className="flex gap-3 mt-0.5">
             {gust != null && (
               <div className="flex flex-col min-w-0">
-                <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">Wind Gusts</span>
-                <span className="text-[12px] font-black text-white leading-none">{Math.round(gust)} <span className="text-[8px] font-medium text-slate-400">km/h</span></span>
+                <span className="text-[7px] font-medium uppercase tracking-[0.12em] text-slate-400">Wind Gusts</span>
+                <span className="text-[11px] font-bold text-white leading-none">{Math.round(gust)} <span className="text-[8px] font-normal text-slate-400">km/h</span></span>
               </div>
             )}
             <div className="flex flex-col min-w-0">
-              <span className="text-[7px] font-bold uppercase tracking-[0.12em] text-slate-400">Direction</span>
-              <span className="text-[12px] font-black text-white leading-none">{dir} <span className="text-[9px] font-medium text-slate-200">· {deg}°</span></span>
+              <span className="text-[7px] font-medium uppercase tracking-[0.12em] text-slate-400">Direction</span>
+              <span className="text-[11px] font-bold text-white leading-none">{dir} <span className="text-[9px] font-normal text-slate-300">· {deg}°</span></span>
             </div>
           </div>
         </div>
@@ -347,12 +347,12 @@ export function EnvironmentIntelTile({ weather, water }: EnvironmentIntelTilePro
   const panelActive = (i: number) => i === activePanel ? "opacity-100 pointer-events-auto z-10" : "opacity-0 pointer-events-none z-0"
 
   return (
-    <div className="relative w-full h-[320px] lg:h-full min-h-[300px]">
+    <div className="relative w-full h-full">
       {/* Panel 1 — Ambient Comfort */}
       <div className={`${TILE_CLS} ${panelActive(0)}`}>
         <AmbientComfortPanel weather={weather} />
         <div className="flex shrink-0 items-center justify-between border-t border-white/[0.04] px-3 py-1">
-          <span className="text-[8px] text-slate-500 font-semibold">Comfort Index</span>
+          <span className="text-[8px] text-slate-500 font-medium">Comfort Index</span>
           <PanelDots active={activePanel} count={PANEL_COUNT} onSelect={handleSelect} />
         </div>
       </div>
@@ -361,7 +361,7 @@ export function EnvironmentIntelTile({ weather, water }: EnvironmentIntelTilePro
       <div className={`${TILE_CLS} ${panelActive(1)}`}>
         <WindCompassPanel weather={weather} />
         <div className="flex shrink-0 items-center justify-between border-t border-white/[0.04] px-3 py-1">
-          <span className="text-[8px] text-slate-400 font-semibold">Updated from weather API</span>
+          <span className="text-[8px] text-slate-400 font-medium">Updated from weather API</span>
           <PanelDots active={activePanel} count={PANEL_COUNT} onSelect={handleSelect} />
         </div>
       </div>

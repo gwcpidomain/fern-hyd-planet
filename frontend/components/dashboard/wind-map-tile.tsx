@@ -53,11 +53,11 @@ export function WindMapTile({ lat, lon }: WindMapTileProps) {
       <div className="flex items-center justify-between px-3 pt-2 pb-1.5 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-1.5">
           <Wind className="h-3.5 w-3.5 text-cyan-400" />
-          <h3 className="text-[11px] font-black uppercase tracking-[0.25em] text-cyan-400">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.20em] text-cyan-400">
             Wind Map
           </h3>
         </div>
-        <span className="text-[8px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+        <span className="text-[8px] font-medium text-slate-500 uppercase tracking-wider flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
           Live · Windy
         </span>

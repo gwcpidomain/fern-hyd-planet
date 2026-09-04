@@ -45,7 +45,7 @@ export function BorewellMonitorCard({
 
       {/* HEADER */}
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-[13px] font-black uppercase tracking-[0.15em] text-[#00e5ff] flex items-center gap-2">
+        <h3 className="text-[13px] font-semibold uppercase tracking-[0.15em] text-[#00e5ff] flex items-center gap-2">
           <Activity className="h-4 w-4" strokeWidth={2.5} />
           Aquifer Monitor {activeBorewellIndex + 1}
         </h3>
@@ -55,7 +55,7 @@ export function BorewellMonitorCard({
           className={`relative w-14 h-6 flex items-center rounded-full transition-all duration-300 border select-none pointer-events-none ${isMotorOn ? "bg-[#022c22] border-[#059669]" : "bg-slate-800 border-slate-600"
             }`}
         >
-          <span className={`absolute text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${isMotorOn ? "left-2 text-[#10b981]" : "right-1.5 text-slate-400"
+          <span className={`absolute text-[9px] font-semibold uppercase tracking-widest transition-all duration-300 ${isMotorOn ? "left-2 text-[#10b981]" : "right-1.5 text-slate-400"
             }`}>
             {isMotorOn ? "ON" : "OFF"}
           </span>
@@ -80,54 +80,54 @@ export function BorewellMonitorCard({
               {/* BOX 1: FLOW */}
               <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
                 <div className="flex items-start justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-[#94a3b8] mt-1">Flow</span>
+                  <span className="text-[11px] font-medium uppercase tracking-widest text-[#94a3b8] mt-1">Flow</span>
                   <div className="rounded-lg border border-[#00e5ff]/20 p-1 bg-[#00e5ff]/5">
                     <Droplets className="h-3.5 w-3.5 text-[#00e5ff]" strokeWidth={2} />
                   </div>
                 </div>
                 <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-black text-white tracking-tighter leading-none">{displayData.flowRate}</span>
-                  <span className="text-[9px] font-black text-[#64748b] uppercase tracking-widest">LPM</span>
+                  <span className="text-[20px] font-bold text-white tracking-tighter leading-none">{displayData.flowRate}</span>
+                  <span className="text-[9px] font-medium text-[#64748b] uppercase tracking-widest">LPM</span>
                 </div>
               </div>
 
               {/* BOX 2: EFF. */}
               <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
                 <div className="flex items-start justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-[#00e5ff] mt-1">Eff.</span>
+                  <span className="text-[11px] font-medium uppercase tracking-widest text-[#00e5ff] mt-1">Eff.</span>
                   <ArrowUpRight className="h-4 w-4 text-[#00e5ff]" strokeWidth={2.5} />
                 </div>
                 <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-black text-[#00e5ff] tracking-tighter leading-none">{displayData.efficiency}%</span>
-                  <span className="text-[9px] font-black text-[#00e5ff]/50">(85)</span>
+                  <span className="text-[20px] font-bold text-[#00e5ff] tracking-tighter leading-none">{displayData.efficiency}%</span>
+                  <span className="text-[9px] font-medium text-[#00e5ff]/60">(85)</span>
                 </div>
               </div>
 
               {/* BOX 3: POWER */}
               <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
                 <div className="flex items-start justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-[#94a3b8] mt-1">Power</span>
+                  <span className="text-[11px] font-medium uppercase tracking-widest text-[#94a3b8] mt-1">Power</span>
                   <div className="rounded-lg border border-[#fbbf24]/20 p-1 bg-[#fbbf24]/5 shadow-[0_0_8px_rgba(251,191,36,0.1)]">
                     <Zap className="h-3.5 w-3.5 text-[#fbbf24]" strokeWidth={2.5} />
                   </div>
                 </div>
                 <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-black text-[#fbbf24] tracking-tighter leading-none">{displayData.voltage}V</span>
-                  <span className="text-[9px] font-black text-[#fbbf24]/70">{displayData.current}A</span>
+                  <span className="text-[20px] font-bold text-[#fbbf24] tracking-tighter leading-none">{displayData.voltage}V</span>
+                  <span className="text-[9px] font-medium text-[#fbbf24]/70">{displayData.current}A</span>
                 </div>
               </div>
 
               {/* BOX 4: RUN TIME */}
               <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
                 <div className="flex items-start justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8] mt-1">Run Time</span>
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-[#94a3b8] mt-1">Run Time</span>
                   <div className="rounded-lg border border-[#3b82f6]/20 p-1 bg-[#3b82f6]/5">
                     <Clock className="h-3.5 w-3.5 text-[#3b82f6]" strokeWidth={2} />
                   </div>
                 </div>
                 <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-black text-[#3b82f6] tracking-tighter leading-none">{displayData.runTime}</span>
-                  <span className="text-[8px] font-black text-[#64748b] uppercase tracking-widest">HRS</span>
+                  <span className="text-[20px] font-bold text-[#3b82f6] tracking-tighter leading-none">{displayData.runTime}</span>
+                  <span className="text-[8px] font-medium text-[#64748b] uppercase tracking-widest">HRS</span>
                 </div>
               </div>
             </div>
@@ -139,8 +139,8 @@ export function BorewellMonitorCard({
                 <Activity className="h-6 w-6 text-slate-600 relative animate-pulse" />
               </div>
               <div className="text-center group">
-                <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 mb-1 transition-colors group-hover:text-slate-400">Motor in off state</h4>
-                <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest leading-none">Command Awaited</p>
+                <h4 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500 mb-1 transition-colors group-hover:text-slate-400">Motor in off state</h4>
+                <p className="text-[9px] text-slate-600 font-medium uppercase tracking-widest leading-none">Command Awaited</p>
               </div>
             </div>
           )}
@@ -166,7 +166,7 @@ export function BorewellMonitorCard({
             <button
               key={tab.id}
               onClick={() => onBorewellChange(tab.id)}
-              className={`relative z-10 flex-1 h-full flex items-center justify-center transition-all duration-300 text-[9px] font-black uppercase tracking-[0.1em] ${
+              className={`relative z-10 flex-1 h-full flex items-center justify-center transition-all duration-300 text-[9px] font-semibold uppercase tracking-[0.1em] ${
                 activeBorewellIndex === tab.id 
                 ? "text-black" 
                 : "text-slate-500 hover:text-slate-300"

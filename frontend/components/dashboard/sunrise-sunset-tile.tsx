@@ -197,12 +197,12 @@ export function SunriseSunsetTile({
       <div className="flex shrink-0 items-center justify-between px-3 pb-1.5 pt-2">
         <div className="flex min-w-0 items-center gap-1.5">
           <Sunrise className="h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden="true" />
-          <h3 className="truncate text-[11px] font-black uppercase tracking-[0.25em] text-cyan-400">
+          <h3 className="truncate text-[11px] font-semibold uppercase tracking-[0.20em] text-cyan-400">
             Sunrise / Sunset
           </h3>
         </div>
         {daylightStr && (
-          <span className="shrink-0 text-[8.5px] font-semibold text-slate-500">
+          <span className="shrink-0 text-[8.5px] font-medium text-slate-500">
             {daylightStr} daylight
           </span>
         )}
@@ -284,15 +284,15 @@ export function SunriseSunsetTile({
         {/* Sunrise / Sunset times */}
         <div className="flex shrink-0 items-end justify-between px-0.5">
           <div className="flex min-w-0 flex-col items-start">
-            <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sunrise</span>
-            <span className="mt-0.5 text-[16px] font-black leading-none text-white">{formatTime(sunriseDate)}</span>
+            <span className="text-[7px] font-medium uppercase tracking-[0.18em] text-slate-500">Sunrise</span>
+            <span className="mt-0.5 text-[15px] font-bold leading-none text-white">{formatTime(sunriseDate)}</span>
           </div>
-          <div className="pb-0.5 text-[9px] font-bold text-amber-400/60">
+          <div className="pb-0.5 text-[9px] font-medium text-amber-400/70">
             {hasSunTimes && !isNight ? `${Math.round(sunProgress * 100)}% daylight` : ""}
           </div>
           <div className="flex min-w-0 flex-col items-end">
-            <span className="text-[7px] font-semibold uppercase tracking-[0.18em] text-slate-500">Sunset</span>
-            <span className="mt-0.5 text-[16px] font-black leading-none text-white">{formatTime(sunsetDate)}</span>
+            <span className="text-[7px] font-medium uppercase tracking-[0.18em] text-slate-500">Sunset</span>
+            <span className="mt-0.5 text-[15px] font-bold leading-none text-white">{formatTime(sunsetDate)}</span>
           </div>
         </div>
 
@@ -308,10 +308,10 @@ export function SunriseSunsetTile({
           {metrics.map((metric) => (
             <div key={metric.label} className="flex min-w-0 flex-col items-center gap-0.5">
               {metric.icon}
-              <span className="max-w-full truncate text-[12px] font-black leading-tight text-white">
+              <span className="max-w-full truncate text-[11.5px] font-bold leading-tight text-white">
                 {metric.value}
               </span>
-              <span className="max-w-full truncate text-[8px] uppercase tracking-wide text-slate-500">
+              <span className="max-w-full truncate text-[8px] uppercase tracking-wide text-slate-400">
                 {metric.label}
               </span>
             </div>

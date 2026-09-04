@@ -1272,14 +1272,14 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* ─── COL 2 ROW 1: Surrounding Conditions (Weather) ─── */}
-                                <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 flex flex-col overflow-hidden h-[320px] lg:h-auto min-w-0">
+                                <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 flex flex-col overflow-hidden h-[300px] lg:h-full min-w-0">
                                     <ErrorBoundary title="Surrounding Conditions">
                                         <WeatherWidget token={token} onConditionChange={handleConditionChange} onWeatherLoad={handleWeatherLoad} />
                                     </ErrorBoundary>
                                 </div>
 
                                 {/* ─── COL 3 ROW 1: Environment Intel Hub ─── */}
-                                <div className="order-3 lg:order-none lg:col-start-3 lg:row-start-1 flex flex-col overflow-hidden h-[320px] lg:h-auto min-w-0">
+                                <div className="order-3 lg:order-none lg:col-start-3 lg:row-start-1 flex flex-col overflow-hidden h-[300px] lg:h-full min-w-0">
                                     <ErrorBoundary title="Environment Intel">
                                         <EnvironmentIntelTile
                                             weather={{
@@ -1386,7 +1386,7 @@ export function PrivateDashboard() {
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 2 ROW 3: Sensor Status (no change) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
                                 <div className="order-8 lg:order-none lg:col-start-2 lg:row-start-3 h-full flex flex-col overflow-hidden min-h-[250px] lg:min-h-0 min-w-0">
                                     <div className="dash-tile relative flex h-full flex-col rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
-                                        <h3 className="mb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
+                                        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
                                         <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                                             {(() => {
                                                 const now = currentTime;
