@@ -1,19 +1,18 @@
 import React from "react"
 import type { Metadata } from 'next'
-import { headers } from "next/headers"
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { DynamicTitle } from "@/components/dynamic-title"
 
-const nunito = {
+const montserrat = {
   className: "font-sans",
-  variable: "--font-nunito"
+  variable: "--font-montserrat"
 };
 
 export const metadata: Metadata = {
-  title: "Planet Insights",
+  title: "Fern Insights",
   description: "Real-time environmental monitoring dashboard for air quality and groundwater levels",
   generator: "v0.app",
   icons: {
@@ -33,7 +32,21 @@ export default function RootLayout({
         {/* Google Fonts loaded in browser to avoid Next.js compiler download blocks */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+          rel="stylesheet"
+        />
+        {/* Synchronous script to set correct tab title before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var h = window.location.hostname.toLowerCase();
+                document.title = h.includes("trifecta") ? "Trifecta Insights" : "Fern Insights";
+              } catch(e) {}
+            `,
+          }}
+        />
         {/* Leaflet CSS — must be in global head for reliable tile rendering */}
         <link
           rel="stylesheet"
@@ -42,7 +55,7 @@ export default function RootLayout({
           crossOrigin=""
         />
       </head>
-      <body className={`${nunito.className} ${nunito.variable} antialiased`}>
+      <body className={`${montserrat.className} ${montserrat.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false} disableTransitionOnChange>
           <AuthProvider>
             <DynamicTitle />

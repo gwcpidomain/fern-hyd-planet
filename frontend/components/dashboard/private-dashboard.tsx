@@ -90,7 +90,7 @@ export function PrivateDashboard() {
                 const nextIndex = (metrics.indexOf(active) + 1) % metrics.length;
                 return metrics[nextIndex];
             });
-        }, 120000); // 2 minutes (120,000 ms)
+        }, 30000); // 30 seconds (30,000 ms)
         return () => clearInterval(interval);
     }, []);
 
@@ -1271,15 +1271,15 @@ export function PrivateDashboard() {
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â€”â€”â€” COL 2 ROW 1: Surrounding Conditions (Weather) â€”â€”â€” */}
-                                <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
+                                {/* ─── COL 2 ROW 1: Surrounding Conditions (Weather) ─── */}
+                                <div className="order-2 lg:order-none lg:col-start-2 lg:row-start-1 flex flex-col overflow-hidden h-[320px] lg:h-auto min-w-0">
                                     <ErrorBoundary title="Surrounding Conditions">
                                         <WeatherWidget token={token} onConditionChange={handleConditionChange} onWeatherLoad={handleWeatherLoad} />
                                     </ErrorBoundary>
                                 </div>
 
-                                {/* â€”â€”â€” COL 3 ROW 1: Environment Intel Hub â€”â€”â€” */}
-                                <div className="order-3 lg:order-none lg:col-start-3 lg:row-start-1 overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
+                                {/* ─── COL 3 ROW 1: Environment Intel Hub ─── */}
+                                <div className="order-3 lg:order-none lg:col-start-3 lg:row-start-1 flex flex-col overflow-hidden h-[320px] lg:h-auto min-w-0">
                                     <ErrorBoundary title="Environment Intel">
                                         <EnvironmentIntelTile
                                             weather={{
@@ -1321,7 +1321,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 2 ROW 2: AQI Pollutant Hub Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-3 lg:order-none lg:col-start-2 lg:row-start-2 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
+                                <div className="order-5 lg:order-none lg:col-start-2 lg:row-start-2 h-full flex flex-col overflow-hidden min-h-[300px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="AQI Pollutant Hub">
                                         <AQIPollutantHub
                                             data={safeAirData}
@@ -1352,7 +1352,7 @@ export function PrivateDashboard() {
                                 </div>
 
                                 {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ COL 1 ROW 3: Water Level Trend Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
-                                <div className="order-5 lg:order-none lg:col-start-1 lg:row-start-3 overflow-hidden min-h-[250px] lg:min-h-0 min-w-0">
+                                <div className="order-7 lg:order-none lg:col-start-1 lg:row-start-3 overflow-hidden min-h-[250px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Water Quality Card">
                                         <WaterQualityCard
                                             data={{

@@ -134,7 +134,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Nunito', 'Geist', sans-serif;
+  --font-sans: 'Montserrat', sans-serif;
   --font-mono: 'Geist Mono', monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -181,7 +181,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Nunito', var(--font-sans), sans-serif;
+    font-family: 'Montserrat', var(--font-sans), sans-serif;
     /* Deep Space Gradient Base */
     background: radial-gradient(ellipse at top,
         #0b1428 0%,
@@ -229,13 +229,14 @@
 }
 
 /* =============================================
-   Nunito Weight Hierarchy System
+   Montserrat Weight Hierarchy System
    Apply these to override default weights.
    900 → major numbers (AQI 47, wind speed, borewell level)
    700 → tile headings and card labels
    600 → metric labels (SUNRISE, GUSTS, HUMIDITY)
    500 → normal data text
    400 → supporting / muted / footer text
+   300 → thin / light branding / sub-headers
    ============================================= */
 @layer utilities {
   .nw-900 { font-weight: 900; }
@@ -243,6 +244,7 @@
   .nw-600 { font-weight: 600; }
   .nw-500 { font-weight: 500; }
   .nw-400 { font-weight: 400; }
+  .nw-300 { font-weight: 300; }
 
   /* Hide scrollbar but keep scroll functionality */
   .scrollbar-none {

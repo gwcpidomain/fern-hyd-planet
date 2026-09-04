@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useState } from "react"
-import { CloudRain, Eye, Gauge, Sun, Sunrise, Wind } from "lucide-react"
+import { CloudRain, Eye, Gauge, Moon, Sun, Sunrise, Wind } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
@@ -137,7 +137,7 @@ export function SunriseSunsetTile({
   const P3: [number, number] = [W - padX, baseY]
   const arcPath = `M ${P0[0]} ${P0[1]} C ${P1[0]} ${P1[1]} ${P2[0]} ${P2[1]} ${P3[0]} ${P3[1]}`
   const [markerX, markerY] = cubicBezierPoint(activeProgress, P0, P1, P2, P3)
-  const clipWidth      = P0[0] + (P3[0] - P0[0]) * activeProgress
+  const clipWidth      = markerX
   const uvInfo         = getUVLabel(uv ?? 0)
   const progressClipId = `arc-progress-${uniqueId}`
   const sunGradientId  = `sun-gradient-${uniqueId}`
@@ -263,17 +263,20 @@ export function SunriseSunsetTile({
                 <circle cx={markerX} cy={markerY} r="2.2" fill="white" opacity="0.9" />
               </>
             ) : (
-              /* ── Moon: cool sky-blue crescent (same cx/cy math) ── */
-              <g transform={`translate(${markerX}, ${markerY})`}>
-                <circle cx="0" cy="0" r="12" fill="rgba(56,189,248,0.08)" />
-                <circle cx="0" cy="0" r="7" fill="rgba(56,189,248,0.18)" />
-                {/* Crescent moon shape */}
-                <path
-                  d="M -2.5 -5 A 5 5 0 1 0 4.5 3 A 4 4 0 1 1 -2.5 -5 Z"
-                  fill="#7dd3fc"
+              /* ── Moon: cool sky-blue glow with Lucide Moon icon (centered at markerX, markerY) ── */
+              <>
+                <circle cx={markerX} cy={markerY} r="13" fill="rgba(56,189,248,0.07)" />
+                <circle cx={markerX} cy={markerY} r="7"  fill="rgba(56,189,248,0.13)" />
+                <Moon
+                  x={markerX - 9}
+                  y={markerY - 9}
+                  width={18}
+                  height={18}
+                  strokeWidth={1.6}
+                  color="#7dd3fc"
+                  aria-hidden="true"
                 />
-                <circle cx="3" cy="-3" r="0.8" fill="white" opacity="0.8" />
-              </g>
+              </>
             )}
           </svg>
         </div>

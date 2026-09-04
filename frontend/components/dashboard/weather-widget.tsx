@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Activity, AlertCircle, Cloud, MapPin, RefreshCw } from "lucide-react"
@@ -177,7 +177,7 @@ export function WeatherWidget({ token, onConditionChange, onWeatherLoad }: Weath
   )
 
   return (
-    <div className="relative h-full">
+    <div className="relative w-full h-[320px] lg:h-full min-h-[300px]">
       {/* ═══ Panel 1: Surrounding Conditions ═══ */}
       <Card className={`dash-tile absolute inset-0 flex flex-col gap-0 overflow-hidden rounded-2xl border-white/[0.11] bg-[rgba(8,15,38,0.45)] p-0 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] transition-opacity duration-500 ${activePanel === 0 ? "opacity-100 pointer-events-auto z-10" : "opacity-0 pointer-events-none z-0"}`}>
         <div className="flex min-h-0 flex-1 flex-col justify-between gap-1 overflow-hidden px-3 pt-2 pb-1.5">

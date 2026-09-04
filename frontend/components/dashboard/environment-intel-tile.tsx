@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useEffect, useState } from "react"
 import { Wind, Thermometer, Droplets, Activity } from "lucide-react"
@@ -347,7 +347,7 @@ export function EnvironmentIntelTile({ weather, water }: EnvironmentIntelTilePro
   const panelActive = (i: number) => i === activePanel ? "opacity-100 pointer-events-auto z-10" : "opacity-0 pointer-events-none z-0"
 
   return (
-    <div className="relative h-full">
+    <div className="relative w-full h-[320px] lg:h-full min-h-[300px]">
       {/* Panel 1 — Ambient Comfort */}
       <div className={`${TILE_CLS} ${panelActive(0)}`}>
         <AmbientComfortPanel weather={weather} />
