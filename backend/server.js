@@ -271,7 +271,15 @@ app.post('/api/control', requireDashboardAuth, validateControlPayload, (req, res
   console.log(`🔌 Command to Borewell ${id} (tenant=${req.tenantId}): ${command}`);
 
   const state = command === 'ON' ? 1 : 0;
-  db.run("UPDATE borewell_state SET is_motor_on = ?, last_updated = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?", [state, id, req.tenantId], (err) => {
+  const nowIso = new Date().toISOString();
+  const sql = state === 1
+    ? "UPDATE borewell_state SET is_motor_on = 1, motor_started_at = COALESCE(motor_started_at, ?), last_updated = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?"
+    : "UPDATE borewell_state SET is_motor_on = 0, motor_started_at = NULL, last_updated = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?";
+  const params = state === 1
+    ? [nowIso, id, req.tenantId]
+    : [id, req.tenantId];
+
+  db.run(sql, params, (err) => {
     if (err) return res.status(500).json({ error: err.message });
 
     // Broadcast status update to connected clients of this tenant
@@ -279,10 +287,11 @@ app.post('/api/control', requireDashboardAuth, validateControlPayload, (req, res
       type: 'control_update',
       id: id,
       tenant_id: req.tenantId,
-      is_motor_on: state === 1
+      is_motor_on: state === 1,
+      motor_started_at: state === 1 ? nowIso : null
     });
 
-    res.json({ status: 'Command Sent', id, state: command });
+    res.json({ status: 'Command Sent', id, state: command, motor_started_at: state === 1 ? nowIso : null });
   });
 });
 
@@ -388,13 +397,23 @@ function handleWaterPush(tenantId, payload, res) {
       // below threshold at low loads, yet the pump is physically running (proven by flow).
       const is_motor_on = (a > 1.1 || flow > 5.0) ? 1 : 0;
 
+      // Track motor_started_at for session duration
+      let motor_started_at = current_state.motor_started_at || null;
+      if (is_motor_on === 1) {
+        if (!current_state.is_motor_on || !motor_started_at) {
+          motor_started_at = new Date().toISOString();
+        }
+      } else {
+        motor_started_at = null;
+      }
+
       // Perform database UPDATE of live state — scoped to tenant
       db.run(`UPDATE borewell_state SET 
       flow_rate = ?, efficiency = ?, voltage = ?, current = ?, run_time_total = ?, water_level = ?, 
       ph = ?, tds = ?, turbidity = ?, is_motor_on = ?, total_liters = ?, current_status = ?, 
-      water_status = ?, turbidity_status = ?, tds_status = ?, last_updated = CURRENT_TIMESTAMP 
+      water_status = ?, turbidity_status = ?, tds_status = ?, motor_started_at = ?, last_updated = CURRENT_TIMESTAMP 
       WHERE id = ? AND tenant_id = ?`,
-        [flow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, id, tenantId],
+        [flow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
         function (updateErr) {
           if (updateErr) {
             console.error("DB Update Error during ingestion:", updateErr.message);
@@ -421,12 +440,14 @@ function handleWaterPush(tenantId, payload, res) {
                 tenant_id: tenantId,
                 timestamp: new Date().toISOString(),
                 isMotorOn: is_motor_on === 1,
+                motorStartedAt: motor_started_at,
                 data: {
                   flowRate: flow,
                   efficiency: eff,
                   voltage: v,
                   current: a,
                   runTime: rt,
+                  motorStartedAt: motor_started_at,
                   waterLevel: wl,
                   ph: ph,
                   tds: tds,
@@ -1043,11 +1064,12 @@ app.get('/api/devices', requireDashboardAuth, (req, res) => {
       const bwLastSeen = bwLastMs > 0 ? new Date(bwLastMs).toISOString() : null;
       const aqiLastSeen = aqiLastMs > 0 ? new Date(aqiLastMs).toISOString() : null;
 
+      // PHASE 2 FIX: Return only 2 real physical hardware nodes.
+      // BW-GW and LORA-HUB were phantom entries duplicating isWaterOnline.
+      // Standard IDs: BW-NODE-01 and AQI-NODE-01 (tenant isolation via DB key).
       res.json([
-        { device_id: `BW-GW-${req.tenantId.toUpperCase()}`, type: "GATEWAY", status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: bwLastSeen },
-        { device_id: `BW-NODE-${req.tenantId.toUpperCase()}`, type: "SENSOR", status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: bwLastSeen },
-        { device_id: `AQI-NODE-${req.tenantId.toUpperCase()}`, type: "SENSOR", status: isAqiOnline ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: aqiLastSeen },
-        { device_id: `LORA-HUB-${req.tenantId.toUpperCase()}`, type: "BASE", status: isWaterOnline ? "ONLINE" : "OFFLINE", location_id: tenantLocId, location_name: tenantLocId, last_seen: bwLastSeen }
+        { device_id: 'BW-NODE-01', type: 'SENSOR', status: isWaterOnline ? 'ONLINE' : 'OFFLINE', location_id: tenantLocId, location_name: tenantLocId, last_seen: bwLastSeen },
+        { device_id: 'AQI-NODE-01', type: 'SENSOR', status: isAqiOnline ? 'ONLINE' : 'OFFLINE', location_id: tenantLocId, location_name: tenantLocId, last_seen: aqiLastSeen }
       ]);
     });
   });
@@ -1166,19 +1188,23 @@ const simulateHardware = () => {
     ['fern', 'trifecta'].forEach(tenantId => {
       // 1. Simulate Water/Borewell Data
       for (let i = 1; i <= 3; i++) {
+        const isMotorSim = Math.random() > 0.5;
+        const simStartedAt = isMotorSim ? new Date(Date.now() - 18 * 60 * 1000).toISOString() : null;
         const mockWaterData = {
           location_id: `${tenantId.toUpperCase()}-01`,
           device_id: `BW-0${i}`,
           tenant_id: tenantId,
           type: 'water',
           timestamp: new Date().toISOString(),
-          isMotorOn: Math.random() > 0.5,
+          isMotorOn: isMotorSim,
+          motorStartedAt: simStartedAt,
           data: {
             flowRate: (40 + Math.random() * 10).toFixed(1),
             efficiency: (70 + Math.random() * 10).toFixed(0),
             voltage: (230 + Math.random() * 5).toFixed(0),
             current: (8 + Math.random() * 2).toFixed(1),
             runTime: (4.5 + Math.random() * 0.1).toFixed(2),
+            motorStartedAt: simStartedAt,
             waterLevel: (50 + Math.sin(Date.now() / 10000) * 5).toFixed(1),
             ph: (7.2 + Math.sin(Date.now() / 5000) * 0.2).toFixed(2),
             tds: (220 + Math.random() * 15).toFixed(1),

@@ -39,6 +39,7 @@ type AirState = {
 type WaterState = {
     level: number; ph: number; tds: number; irms: number; pump_status: string;
     flow?: number; flowRate?: number; efficiency?: number; voltage?: number; runTime?: number; turbidity?: number;
+    motorStartedAt?: string | null;
     totalLiters?: number;
     currentStatus?: string;
     waterStatus?: string;
@@ -97,10 +98,15 @@ export function PrivateDashboard() {
     const [readingsPeriod, setReadingsPeriod] = useState<HistoricalPeriod>("week")
     const [readingsModalOpen, setReadingsModalOpen] = useState(false)
     const [activeBorewellIndex, setActiveBorewellIndex] = useState(0);
-    const [borewells, setBorewells] = useState([
-        { id: "BW-01", isMotorOn: false, runTime: 0 },
-        { id: "BW-02", isMotorOn: false, runTime: 0 },
-        { id: "BW-03", isMotorOn: false, runTime: 0 },
+    const [borewells, setBorewells] = useState<Array<{
+        id: string;
+        isMotorOn: boolean;
+        runTime: number;
+        motorStartedAt?: string | null;
+    }>>([
+        { id: "BW-01", isMotorOn: false, runTime: 0, motorStartedAt: null },
+        { id: "BW-02", isMotorOn: false, runTime: 0, motorStartedAt: null },
+        { id: "BW-03", isMotorOn: false, runTime: 0, motorStartedAt: null },
     ]);
 
     // HYDRATION GUARD INITIALIZATION
@@ -120,7 +126,12 @@ export function PrivateDashboard() {
 
     // Location Management
     const [locations, setLocations] = useState<any[]>([])
-    const [currentLocation, setCurrentLocation] = useState("HYD-01")
+    // PHASE 4 FIX: Initialise to the actual tenant's location ID so the
+    // first render doesn't trigger a locationId change -> WS teardown.
+    // tenantId arrives from useAuth() synchronously on first render.
+    const [currentLocation, setCurrentLocation] = useState(
+        tenantId ? tenantId.toUpperCase() + "-01" : "FERN-01"
+    )
     const [capabilities, setCapabilities] = useState({ has_aqi: true, has_water: true })
 
     // Devices State
@@ -141,16 +152,16 @@ export function PrivateDashboard() {
     }, [lastWaterTime]);
     const [currentTime, setCurrentTime] = useState(Date.now());
 
-    // Update 'currentTime' every 5 seconds for offline calc AND increment motor timers for all ON units
+    // Update 'currentTime' every second for smooth session timer ticking & offline calc
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentTime(Date.now());
             if (demoMode) {
                 setBorewells(prev => prev.map(bw =>
-                    bw.isMotorOn ? { ...bw, runTime: bw.runTime + 5 } : bw
+                    bw.isMotorOn ? { ...bw, runTime: bw.runTime + 1 } : bw
                 ));
             }
-        }, 5000);
+        }, 1000);
         return () => clearInterval(interval);
     }, [demoMode]);
 
@@ -406,7 +417,8 @@ export function PrivateDashboard() {
                         .map(bw => ({
                             id: bw.id,
                             isMotorOn: bw.is_motor_on === 1,
-                            runTime: bw.run_time_total
+                            runTime: bw.run_time_total,
+                            motorStartedAt: bw.motor_started_at || null
                         }))
                         .sort((a, b) => a.id.localeCompare(b.id));
                     setBorewells(sortedBw);
@@ -449,6 +461,7 @@ export function PrivateDashboard() {
                                 efficiency: active.efficiency ?? prev?.efficiency ?? 0,
                                 voltage: active.voltage ?? prev?.voltage ?? 0,
                                 runTime: active.run_time_total ?? prev?.runTime ?? 0,
+                                motorStartedAt: active.motor_started_at || null,
                                 turbidity: isDbZero ? (prev?.turbidity ?? 1.2) : (active.turbidity || prev?.turbidity || 1.2),
                                 pump_status: active.current_status || (active.is_motor_on ? "MID" : "OFF"),
                                 totalLiters: active.total_liters ?? prev?.totalLiters,
@@ -558,11 +571,13 @@ export function PrivateDashboard() {
                 (incomingIrms !== undefined && incomingIrms > 1.1)
             );
             if (hasPumpData || isZeroWater) {
+                const incomingStartedAt = (wsData as any).motorStartedAt || incoming.motorStartedAt || null;
                 setBorewells(prev => prev.map(bw => {
                     if (bw.id === incomingId) {
                         return {
                             ...bw,
                             isMotorOn: isIncomingMotorOn,
+                            motorStartedAt: isIncomingMotorOn ? (incomingStartedAt || bw.motorStartedAt || new Date().toISOString()) : null,
                             runTime: incoming.runTime !== undefined ? incoming.runTime * 3600 : bw.runTime
                         };
                     }
@@ -644,6 +659,7 @@ export function PrivateDashboard() {
                     efficiency: incoming.efficiency ?? (prev?.efficiency ?? 0),
                     voltage: incoming.voltage ?? (prev?.voltage ?? 0),
                     runTime: incoming.runTime ?? (prev?.runTime ?? 0),
+                    motorStartedAt: isIncomingMotorOn ? ((wsData as any).motorStartedAt || incoming.motorStartedAt || prev?.motorStartedAt || new Date().toISOString()) : null,
                     turbidity: incoming.turbidity ?? (prev?.turbidity ?? 1.2),
                     pump_status: incoming.currentStatus ?? (hasPumpData ? (derivedStatus ?? 'N/A') : (prev?.pump_status ?? 'N/A')),
                     totalLiters: incoming.totalLiters ?? prev?.totalLiters,
@@ -663,8 +679,9 @@ export function PrivateDashboard() {
         } else if (wsData && (wsData.type as string) === 'control_update') {
             const incomingId = (wsData as any).id;
             const isMotorOn = (wsData as any).is_motor_on;
+            const motorStartedAt = (wsData as any).motor_started_at || (isMotorOn ? new Date().toISOString() : null);
             setBorewells(prev => prev.map(bw =>
-                bw.id === incomingId ? { ...bw, isMotorOn } : bw
+                bw.id === incomingId ? { ...bw, isMotorOn, motorStartedAt } : bw
             ));
         }
     }, [wsData, demoMode, activeBorewellIndex, borewells]);
@@ -829,8 +846,13 @@ export function PrivateDashboard() {
         const currentStatus = borewells[index]?.isMotorOn ? 'OFF' : 'ON';
 
         // Update UI immediately (Optimistic)
+        const willBeOn = !borewells[index]?.isMotorOn;
         setBorewells(prev => prev.map((bw, i) =>
-            i === index ? { ...bw, isMotorOn: !bw.isMotorOn } : bw
+            i === index ? {
+                ...bw,
+                isMotorOn: willBeOn,
+                motorStartedAt: willBeOn ? new Date().toISOString() : null
+            } : bw
         ));
 
         // Sync with Real Backend if not in demo
@@ -844,7 +866,11 @@ export function PrivateDashboard() {
                 toast.error(`Pump command failed. Reverting motor state.`);
                 // Rollback state
                 setBorewells(prev => prev.map((bw, i) =>
-                    i === index ? { ...bw, isMotorOn: !bw.isMotorOn } : bw
+                    i === index ? {
+                        ...bw,
+                        isMotorOn: !willBeOn,
+                        motorStartedAt: !willBeOn ? new Date().toISOString() : null
+                    } : bw
                 ));
             });
         }
@@ -863,7 +889,8 @@ export function PrivateDashboard() {
                         .map(bw => ({
                             id: bw.id,
                             isMotorOn: bw.is_motor_on === 1,
-                            runTime: bw.run_time_total
+                            runTime: bw.run_time_total,
+                            motorStartedAt: bw.motor_started_at || null
                         }))
                         .sort((a, b) => a.id.localeCompare(b.id));
                     setBorewells(sortedBw);
@@ -890,6 +917,7 @@ export function PrivateDashboard() {
                             efficiency: active.efficiency ?? prev?.efficiency ?? 0,
                             voltage: active.voltage ?? prev?.voltage ?? 0,
                             runTime: active.run_time_total ?? prev?.runTime ?? 0,
+                            motorStartedAt: active.motor_started_at || null,
                             turbidity: isDbZero ? (prev?.turbidity ?? 1.2) : (active.turbidity || prev?.turbidity || 1.2),
                             pump_status: active.current_status || (active.is_motor_on ? "MID" : "OFF"),
                             totalLiters: active.total_liters ?? prev?.totalLiters,
@@ -1046,6 +1074,7 @@ export function PrivateDashboard() {
         efficiency: Number(waterData?.efficiency ?? 0),
         voltage: Number(waterData?.voltage ?? 0),
         runTime: Number(waterData?.runTime ?? 0),
+        motorStartedAt: waterData?.motorStartedAt || null,
         turbidity: Number(waterData?.turbidity ?? 1.2),
         totalLiters: (waterData?.totalLiters !== undefined && waterData?.totalLiters !== null) ? Number(waterData.totalLiters) : undefined,
         currentStatus: waterData?.currentStatus,
@@ -1245,6 +1274,7 @@ export function PrivateDashboard() {
                                             onBorewellChange={setActiveBorewellIndex}
                                             isMotorOn={isMotorOn}
                                             onMotorToggle={() => handleMotorToggle(activeBorewellIndex)}
+                                            borewells={borewells}
                                             data={{
                                                 flowRate: isMotorOn
                                                     ? Number(safeWaterData.flowRate || (demoMode ? rand(35 + activeBorewellIndex * 5, 55 + activeBorewellIndex * 5) : 0)).toFixed(1)
@@ -1258,7 +1288,41 @@ export function PrivateDashboard() {
                                                 current: isMotorOn
                                                     ? Number(safeWaterData.irms || (demoMode ? rand(7.8, 9.2) : 0)).toFixed(1)
                                                     : "0.0",
-                                                runTime: Number(safeWaterData.runTime || 0).toFixed(2),
+                                                runTime: (() => {
+                                                    if (!isMotorOn) return "0.0";
+                                                    const activeBw = borewells[activeBorewellIndex];
+                                                    const startedAt = activeBw?.motorStartedAt || safeWaterData?.motorStartedAt;
+                                                    if (startedAt) {
+                                                        const cleanUtc = startedAt.includes('T') ? startedAt : startedAt.replace(' ', 'T') + 'Z';
+                                                        const startMs = new Date(cleanUtc).getTime();
+                                                        const elapsedSec = !isNaN(startMs) && startMs > 0 ? Math.max(0, Math.floor((currentTime - startMs) / 1000)) : 0;
+                                                        if (elapsedSec < 3600) {
+                                                            const m = Math.floor(elapsedSec / 60);
+                                                            const s = elapsedSec % 60;
+                                                            return `${m}m ${s < 10 ? '0' : ''}${s}s`;
+                                                        }
+                                                        return (elapsedSec / 3600).toFixed(2);
+                                                    }
+                                                    if (demoMode) {
+                                                        const m = Math.floor(motorRunTime / 60);
+                                                        const s = motorRunTime % 60;
+                                                        return m > 0 ? `${m}m ${s < 10 ? '0' : ''}${s}s` : `${s}s`;
+                                                    }
+                                                    return Number(safeWaterData.runTime || 0).toFixed(2);
+                                                })(),
+                                                runTimeUnit: (() => {
+                                                    if (!isMotorOn) return "HRS";
+                                                    const activeBw = borewells[activeBorewellIndex];
+                                                    const startedAt = activeBw?.motorStartedAt || safeWaterData?.motorStartedAt;
+                                                    if (startedAt) {
+                                                        const cleanUtc = startedAt.includes('T') ? startedAt : startedAt.replace(' ', 'T') + 'Z';
+                                                        const startMs = new Date(cleanUtc).getTime();
+                                                        const elapsedSec = !isNaN(startMs) && startMs > 0 ? Math.max(0, Math.floor((currentTime - startMs) / 1000)) : 0;
+                                                        return elapsedSec < 3600 ? "SESSION" : "HRS";
+                                                    }
+                                                    if (demoMode) return "SESSION";
+                                                    return "HRS";
+                                                })(),
                                                 liters: (safeWaterData.totalLiters !== undefined && safeWaterData.totalLiters !== null)
                                                     ? Number(safeWaterData.totalLiters).toFixed(1)
                                                     : (demoMode && isMotorOn
@@ -1304,11 +1368,20 @@ export function PrivateDashboard() {
                                 {/* ─── COL 1 ROW 2: WQI Analysis + Pump Monitor ─── */}
                                 <div className="order-4 lg:order-none lg:col-start-1 lg:row-start-2 overflow-hidden min-h-[400px] lg:min-h-0 min-w-0">
                                     <ErrorBoundary title="Water Analysis">
+                                        {/* PHASE 1 FIX: irms and pump_status are zeroed when motor is OFF
+                                             so SpeedometerGauge cannot inherit stale cached readings
+                                             from the last active pump session. This links Pump Monitor
+                                             state directly to Aquifer Monitor master state. */}
                                         <WaterAnalysisSplit
                                             waterData={{
                                                 ...safeWaterData,
                                                 level: safeWaterData.level || (demoMode ? (isMotorOn ? rand(4.2, 5.8) : rand(1.2, 2.5)) : 0),
-                                                irms: safeWaterData.irms || (demoMode ? (isMotorOn ? rand(7.8, 9.2) : 0) : 0),
+                                                irms: isMotorOn
+                                                    ? (safeWaterData.irms || (demoMode ? rand(7.8, 9.2) : 0))
+                                                    : 0,
+                                                pump_status: isMotorOn
+                                                    ? (safeWaterData.pump_status || 'CHARGING')
+                                                    : 'STANDBY',
                                                 tds: safeWaterData.tds || (demoMode ? rand(210, 240) : 0),
                                                 ph: safeWaterData.ph || (demoMode ? rand(6.8, 7.4) : 0),
                                                 turbidity: safeWaterData.turbidity || (demoMode ? rand(0.8, 1.8) : 0)
@@ -1388,57 +1461,49 @@ export function PrivateDashboard() {
                                     <div className="dash-tile relative flex h-full flex-col rounded-2xl bg-[rgba(8,15,38,0.45)] border border-white/[0.11] shadow-[inset_0_1px_1px_rgba(255,255,255,0.22)] p-3 overflow-hidden">
                                         <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 border-b border-white/5 pb-1 shrink-0">Sensor Status</h3>
                                         <div className="flex flex-col gap-1.5 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-                                            {(() => {
-                                                const now = currentTime;
-                                                const isWaterOnline = wsConnected && lastWaterTime > 0 && (now - lastWaterTime < 30000);
-                                                const isAirOnline = wsConnected && lastAirTime > 0 && (now - lastAirTime < 30000);
-                                                const isLoraHubOnline = isWaterOnline && isAirOnline ? true : (isAirOnline ? false : (isWaterOnline ? true : false));
-                                                const isGwOnline = isWaterOnline && isAirOnline ? true : (isAirOnline ? false : (isWaterOnline ? true : false));
-                                                const isWaterNodeOnline = isWaterOnline && isAirOnline ? true : (isAirOnline ? false : (isWaterOnline ? true : false));
-                                                const isAqiNodeOnline = isWaterOnline && isAirOnline ? true : (isAirOnline ? true : (isWaterOnline ? false : false));
-
-                                                return [
-                                                    { device_id: "BW-GW-01", type: "GATEWAY", status: isGwOnline ? "ONLINE" : "OFFLINE" },
-                                                    { device_id: "BW-NODE-01", type: "SENSOR", status: isWaterNodeOnline ? "ONLINE" : "OFFLINE" },
-                                                    { device_id: "AQI-NODE-01", type: "SENSOR", status: isAqiNodeOnline ? "ONLINE" : "OFFLINE" },
-                                                    { device_id: "LORA-HUB", type: "BASE", status: isLoraHubOnline ? "ONLINE" : "OFFLINE" }
-                                                ];
-                                            })().map((dev: any) => (
-                                                <div
-                                                    key={dev.device_id}
-                                                    className="w-full flex cursor-pointer items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 transition-all hover:bg-white/[0.06] group"
-                                                    onClick={() => dev.location_id && handleLocationSelect(dev.location_id)}
-                                                    role="button"
-                                                    aria-label={`View status details for device ${dev.device_id}`}
-                                                    tabIndex={0}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === "Enter" || e.key === " ") {
-                                                            dev.location_id && handleLocationSelect(dev.location_id);
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <div className="h-7 w-7 rounded-md bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
-                                                            <Cpu className="h-3.5 w-3.5 text-emerald-400" />
-                                                        </div>
-                                                        <div className="min-w-0">
-                                                            <div className="text-[11px] font-bold text-white truncate">{dev.device_id}</div>
-                                                            <div className="text-[8px] uppercase text-slate-500 truncate">{dev.type}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div 
-                                                        role="status"
-                                                        aria-label={`${dev.device_id} is ${dev.status}`}
-                                                        className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[8px] font-bold uppercase shrink-0 ${dev.status?.toUpperCase() === 'ONLINE'
-                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                                                            : 'bg-red-500/10 text-red-400 border-red-500/30'
-                                                            }`}
-                                                    >
-                                                        <div className={`h-1.5 w-1.5 rounded-full ${dev.status?.toUpperCase() === 'ONLINE' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                                                        {dev.status?.toUpperCase() === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                             {/* PHASE 2 FIX: 2 real hardware nodes only.
+                                                 BW-GW-01 and LORA-HUB were phantom entries -- they shared
+                                                 the exact same isWaterOnline boolean as BW-NODE-01 and
+                                                 added no unique information. Removed to avoid confusion.
+                                                 Multi-tenant safe: isolation handled by DB key (id, tenant_id). */}
+                                             {[
+                                                     {
+                                                         device_id: "BW-NODE-01",
+                                                         type: "BOREWELL SENSOR",
+                                                         status: (wsConnected && lastWaterTime > 0 && (currentTime - lastWaterTime < 30000)) ? "ONLINE" : "OFFLINE"
+                                                     },
+                                                     {
+                                                         device_id: "AQI-NODE-01",
+                                                         type: "AIR QUALITY SENSOR",
+                                                         status: (wsConnected && lastAirTime > 0 && (currentTime - lastAirTime < 30000)) ? "ONLINE" : "OFFLINE"
+                                                     }
+                                             ].map((dev) => (
+                                                 <div
+                                                     key={dev.device_id}
+                                                     className="w-full flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2"
+                                                 >
+                                                     <div className="flex items-center gap-3 min-w-0">
+                                                         <div className="h-7 w-7 rounded-md bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
+                                                             <Cpu className="h-3.5 w-3.5 text-emerald-400" />
+                                                         </div>
+                                                         <div className="min-w-0">
+                                                             <div className="text-[11px] font-bold text-white truncate">{dev.device_id}</div>
+                                                             <div className="text-[8px] uppercase text-slate-500 truncate">{dev.type}</div>
+                                                         </div>
+                                                     </div>
+                                                     <div
+                                                         role="status"
+                                                         aria-label={`${dev.device_id} is ${dev.status}`}
+                                                         className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[8px] font-bold uppercase shrink-0 ${dev.status === 'ONLINE'
+                                                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                                             : 'bg-red-500/10 text-red-400 border-red-500/30'
+                                                         }`}
+                                                     >
+                                                         <div className={`h-1.5 w-1.5 rounded-full ${dev.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                                         {dev.status}
+                                                     </div>
+                                                 </div>
+                                             ))}
                                         </div>
                                     </div>
                                 </div>

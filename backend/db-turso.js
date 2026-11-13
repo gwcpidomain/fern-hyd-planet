@@ -187,6 +187,7 @@ async function initSchema(client) {
       water_status     TEXT,
       turbidity_status TEXT,
       tds_status       TEXT,
+      motor_started_at TEXT,
       last_updated     TEXT    DEFAULT (datetime('now')),
       PRIMARY KEY (id, tenant_id)
     )`,
@@ -231,6 +232,13 @@ async function initSchema(client) {
   // Migration: ensure site_password_hash column exists on existing Turso DBs
   try {
     await client.execute("ALTER TABLE tenants ADD COLUMN site_password_hash TEXT");
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
+  // Migration: ensure motor_started_at exists on borewell_state on existing Turso DBs
+  try {
+    await client.execute("ALTER TABLE borewell_state ADD COLUMN motor_started_at TEXT");
   } catch (e) {
     // Column already exists, ignore
   }

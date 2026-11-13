@@ -97,7 +97,11 @@ export function useRealtimeData(locationId: string, token: string | null, tenant
                 clearTimeout(reconnectTimeoutRef.current);
             }
         };
-    }, [locationId, token]);
+    // PHASE 4 FIX: locationId is NOT used in the WS URL (URL is just ?token=...).
+    // Keeping locationId here caused ws.close() + reconnect every time the user
+    // switched borewell tabs or the initial location auto-corrected HYD-01 -> FERN-01.
+    // Removed locationId from deps: socket now lives for the token lifetime only.
+    }, [token]);
 
     // Single consolidated liveness checker
     useEffect(() => {

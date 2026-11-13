@@ -108,44 +108,58 @@ export function SpeedometerGauge({
   isMotorOn?: boolean
 }) {
   const maxAmps = 15;
-  // Guard: irms may arrive as null/undefined from DB — coerce to safe number
-  const safeIrms = Number.isFinite(Number(irms)) ? Number(irms) : 0;
 
-  // 4 color-coded zones: Left→Right = CRITICAL → LOW → MID → HIGH based on Amps
+  // ── PHASE 1 FIX: Link Pump Monitor state to Aquifer Monitor master state ──
+  // If motor is confirmed OFF or water sensor is offline, force 0.0 A and STANDBY.
+  // This eliminates the contradiction where Aquifer shows "MOTOR OFF" but gauge shows active amps.
+  const safeIrms = isMotorOn
+    ? (Number.isFinite(Number(irms)) ? Number(irms) : 0)
+    : 0.0;
+
+  // 4 color-coded zones: Left→Right = CHARGING → LOW → MID → HIGH based on Amps
   const zones = [
     { label: "CHARGING", from: 0, to: 0.25, color: "#d91536e8" },   // Vibrant Red (Off/dry run)
-    { label: "LOW", from: 0.25, to: 0.5, color: "#f3f627f8" },      // Warm Orange
+    { label: "LOW", from: 0.25, to: 0.5, color: "#f3f627f8" },      // Warm Yellow
     { label: "MID", from: 0.5, to: 0.75, color: "#377deeff" },      // Bright Blue (Normal operation)
     { label: "HIGH", from: 0.75, to: 1, color: "#22c55eff" },       // Vivid Green
   ];
 
   // Map status string → ratio (center of the zone)
   const statusToRatio: Record<string, number> = {
-    "OFF": 0.125,
+    "OFF": 0.0,
+    "STANDBY": 0.0,
     "CHARGING": 0.125,
-    "CRITICAL": 0.30,  // Added: below 4A but motor running
+    "CRITICAL": 0.30,
     "LOW": 0.375,
     "MID": 0.625,
     "HIGH": 0.875,
   };
 
-  // If motor is confirmed ON (by flow) but amps read below threshold,
-  // override the status so the gauge doesn't show CHARGING/OFF.
-  const resolvedPumpStatus = (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
-    ? 'LOW'
-    : (pumpStatus || status || 'OFF');
+  // If motor is OFF: needle rests at 0.0 (far left), status is STANDBY.
+  // If motor is ON but amps are below threshold (flow confirmed), override to LOW so gauge is not stuck at CHARGING.
+  const resolvedPumpStatus = !isMotorOn
+    ? 'STANDBY'
+    : (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
+      ? 'LOW'
+      : (pumpStatus || status || 'CHARGING');
 
-  // Priority: use the resolved status string from pump monitor, fallback to current load ratio
   const activeStatusStr = resolvedPumpStatus.toUpperCase();
-  const ratio = statusToRatio[activeStatusStr] ?? (safeIrms / maxAmps);
 
-  const activeZone = zones.find(z => ratio >= z.from && ratio < z.to) || zones[zones.length - 1];
-  // When motor is on but status is overridden, display ON instead of LOW
-  const activeStatus = (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
-    ? 'ON'
-    : activeStatusStr;
+  // Ratio = 0.0 when motor is OFF → needle rests at 180° (leftmost resting position)
+  const ratio = !isMotorOn
+    ? 0.0
+    : (statusToRatio[activeStatusStr] ?? (safeIrms / maxAmps));
 
-  // Needle angle: semi-circle from 180° (left) to 0° (right)
+  const activeZone = zones.find(z => ratio >= z.from && ratio < z.to) || zones[0];
+
+  // Display label: STANDBY when motor is off, ON when motor on but status overridden, else raw status
+  const activeStatus = !isMotorOn
+    ? 'STANDBY'
+    : (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
+      ? 'ON'
+      : activeStatusStr;
+
+  // Needle angle: semi-circle from 180° (left/resting) to 0° (right/max)
   const needleAngle = 180 - (ratio * 180);
 
   const cx = 180, cy = 160, r = 130;

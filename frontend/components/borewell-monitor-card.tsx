@@ -6,12 +6,15 @@ interface BorewellMonitorProps {
   onMotorToggle?: () => void
   activeBorewellIndex: number
   onBorewellChange: (index: number) => void
+  // PHASE 3: Optional borewells list; hides tabs when only 1 borewell installed
+  borewells?: Array<{ id: string; name?: string }>
   data?: {
     flowRate: number | string
     efficiency: number | string
     voltage: number | string
     current: number | string
     runTime: string
+    runTimeUnit?: string
     liters: string
   }
 }
@@ -21,7 +24,8 @@ export function BorewellMonitorCard({
   onMotorToggle, 
   data,
   activeBorewellIndex,
-  onBorewellChange
+  onBorewellChange,
+  borewells
 }: BorewellMonitorProps) {
   const displayData = data || {
     flowRate: 42.5,
@@ -32,11 +36,12 @@ export function BorewellMonitorCard({
     liters: "850"
   };
 
-  const tabs = [
-    { id: 0, label: "Borewell 1" },
-    { id: 1, label: "Borewell 2" },
-    { id: 2, label: "Borewell 3" },
-  ];
+  // PHASE 3 FIX: Dynamic tabs — hide entirely when only 1 borewell installed.
+  // Parent passes `borewells` from DB; default to single borewell if not provided.
+  const tabs = (borewells && borewells.length > 0)
+    ? borewells.map((bw, i) => ({ id: i, label: bw.name || `Borewell ${i + 1}` }))
+    : [{ id: 0, label: "Borewell 1" }];
+  const showTabs = tabs.length > 1;
 
   return (
     <div className="dash-tile relative flex h-full flex-col overflow-hidden rounded-2xl p-4 bg-[rgba(8,15,38,0.45)] ring-1 ring-inset ring-white/[0.11] shadow-[inset_0_1px_1px_rgba(255,255,255,0.14)] transition-all duration-200">
@@ -47,7 +52,7 @@ export function BorewellMonitorCard({
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-[13px] font-semibold uppercase tracking-[0.15em] text-[#00e5ff] flex items-center gap-2">
           <Activity className="h-4 w-4" strokeWidth={2.5} />
-          Aquifer Monitor {activeBorewellIndex + 1}
+          {showTabs ? `Aquifer Monitor ${activeBorewellIndex + 1}` : "Aquifer Monitor"}
         </h3>
 
         {/* Toggle Switch (Read-only status display) */}
@@ -127,7 +132,7 @@ export function BorewellMonitorCard({
                 </div>
                 <div className="flex items-baseline gap-1 mt-2">
                   <span className="text-[20px] font-bold text-[#3b82f6] tracking-tighter leading-none">{displayData.runTime}</span>
-                  <span className="text-[8px] font-medium text-[#64748b] uppercase tracking-widest">HRS</span>
+                  <span className="text-[8px] font-medium text-[#64748b] uppercase tracking-widest">{displayData.runTimeUnit || "HRS"}</span>
                 </div>
               </div>
             </div>
@@ -147,15 +152,16 @@ export function BorewellMonitorCard({
         </div>
       </div>
 
-      {/* BOREWELL SELECTOR TABS - SLEEK VERSION */}
+      {/* BOREWELL SELECTOR TABS - SLEEK VERSION (hidden when only 1 borewell) */}
+      {showTabs && (
       <div className="mt-auto pt-4 px-1">
         <div className="relative h-[22px] w-full rounded-full bg-white/[0.03] border border-white/[0.05] p-1 flex items-center overflow-x-auto scrollbar-none backdrop-blur-sm group/nav">
           {/* Sliding Glow Indicator */}
           <div 
             className="absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] z-0"
             style={{ 
-              width: 'calc(33.333% - 4px)',
-              left: `calc(${activeBorewellIndex * 33.333}% + 2px)`,
+              width: `calc(${100 / tabs.length}% - 4px)`,
+              left: `calc(${activeBorewellIndex * (100 / tabs.length)}% + 2px)`,
             }}
           >
             <div className="absolute inset-0 bg-white/20 rounded-full animate-pulse" />
@@ -191,6 +197,7 @@ export function BorewellMonitorCard({
             ))}
         </div>
       </div>
+      )}
 
       <style jsx>{`
         @keyframes slideIn {

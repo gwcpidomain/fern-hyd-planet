@@ -88,6 +88,7 @@ function initTables() {
       water_status TEXT,
       turbidity_status TEXT,
       tds_status TEXT,
+      motor_started_at DATETIME,
       last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id, tenant_id)
     )`);
@@ -148,6 +149,9 @@ function initTables() {
       db.run(`ALTER TABLE borewell_state ADD COLUMN ${col} ${colType}`, (err) => { /* Ignore */ });
       db.run(`ALTER TABLE readings_history ADD COLUMN ${col} ${colType}`, (err) => { /* Ignore */ });
     });
+
+    // Migration: add motor_started_at for session duration tracking
+    db.run(`ALTER TABLE borewell_state ADD COLUMN motor_started_at DATETIME`, () => { /* Silently ignore if already exists */ });
 
     // Migration: add per-site password hash to existing tenants tables
     db.run(`ALTER TABLE tenants ADD COLUMN site_password_hash TEXT`, () => { /* Silently ignore if already exists */ });
