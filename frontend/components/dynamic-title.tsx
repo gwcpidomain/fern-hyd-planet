@@ -10,7 +10,11 @@ export function DynamicTitle() {
     if (typeof window === "undefined") return
 
     const host = window.location.hostname.toLowerCase()
-    const targetTitle = host.includes("trifecta") ? "Trifecta Insights" : "Fern Insights"
+    const targetTitle = host.includes("trifecta")
+      ? "Trifecta Insights"
+      : host.includes("urbanrise")
+      ? "Urbanrise Insights"
+      : "Fern Insights"
 
     const applyTitle = () => {
       if (document.title !== targetTitle) {

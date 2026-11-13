@@ -332,6 +332,62 @@ async function initSchema(client) {
     await client.batch(seedBatch, 'write');
     console.log('✅ Initial 24h readings history seeded in Turso');
   }
+
+  // Step 6: Auto-migration: Ensure 'urbanrise' tenant, user, borewell, and history exist in Turso
+  try {
+    const urbTenant = await client.execute("SELECT id FROM tenants WHERE id = 'urbanrise'");
+    if (urbTenant.rows.length === 0) {
+      await client.execute({
+        sql: "INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('urbanrise', 'Urbanrise Insights', '/logo.png', '#10b981', '#06b6d4', 17.5348, 78.3688, 'Urbanrise On Cloud 33, Bachupally, Hyderabad, Telangana 500090')",
+        args: []
+      });
+      console.log('✅ Auto-migrated tenant: urbanrise in Turso');
+    }
+
+    const urbUser = await client.execute("SELECT id FROM users WHERE email = 'urbanrise' AND tenant_id = 'urbanrise'");
+    if (urbUser.rows.length === 0) {
+      const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || '12345';
+      const hashed = hashPassword(adminPassword);
+      await client.execute({
+        sql: "INSERT INTO users (email, password, full_name, tenant_id) VALUES ('urbanrise', ?, 'Urbanrise Admin', 'urbanrise')",
+        args: [hashed]
+      });
+      console.log('✅ Auto-migrated user: urbanrise in Turso');
+    }
+
+    const urbBw = await client.execute("SELECT id FROM borewell_state WHERE tenant_id = 'urbanrise'");
+    if (urbBw.rows.length === 0) {
+      await client.execute({
+        sql: "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'urbanrise', 'Borewell 1', 45.0)",
+        args: []
+      });
+      console.log('✅ Auto-migrated borewell BW-01 for urbanrise in Turso');
+    }
+
+    const urbHist = await client.execute("SELECT id FROM readings_history WHERE tenant_id = 'urbanrise' LIMIT 1");
+    if (urbHist.rows.length === 0) {
+      const now = Date.now();
+      const seedBatch = [];
+      for (let i = 24; i >= 0; i--) {
+        const t       = (24 - i) / 24;
+        const timeStr = new Date(now - i * 3_600_000).toISOString().replace('T', ' ').substring(0, 19);
+        const lvl     = parseFloat((5.2  + Math.sin(t * Math.PI * 2) * 0.4  + Math.random() * 0.1).toFixed(2));
+        const ph      = parseFloat((7.35 + Math.sin(t * Math.PI * 4) * 0.15 + Math.random() * 0.05).toFixed(2));
+        const tds     = parseFloat((215  + Math.sin(t * Math.PI * 2) * 15   + Math.random() * 4).toFixed(1));
+        const turb    = parseFloat((1.4  + Math.cos(t * Math.PI * 2) * 0.3  + Math.random() * 0.08).toFixed(2));
+        seedBatch.push({
+          sql:  `INSERT INTO readings_history
+                 (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: ['BW-01', 'urbanrise', 0.0, lvl, 0.0, 230.0, 0.0, ph, tds, turb, timeStr],
+        });
+      }
+      await client.batch(seedBatch, 'write');
+      console.log('✅ Auto-migrated initial 24h readings history for urbanrise in Turso');
+    }
+  } catch (err) {
+    console.error('⚠️ Failed to auto-migrate urbanrise in Turso:', err.message);
+  }
 }
 
 module.exports = { createTursoDb };

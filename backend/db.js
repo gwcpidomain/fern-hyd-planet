@@ -237,6 +237,58 @@ function initTables() {
         console.log('✅ Seeded initial readings history');
       }
     });
+
+    // Auto-migration: Ensure urbanrise tenant, user, borewell, and history exist
+    db.get("SELECT id FROM tenants WHERE id = 'urbanrise'", (err, row) => {
+      if (!row) {
+        db.run("INSERT OR IGNORE INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('urbanrise', 'Urbanrise Insights', '/logo.png', '#10b981', '#06b6d4', 17.5348, 78.3688, 'Urbanrise On Cloud 33, Bachupally, Hyderabad, Telangana 500090')");
+        console.log('✅ Auto-migrated tenant: urbanrise');
+      }
+    });
+
+    db.get("SELECT id FROM users WHERE email = 'urbanrise' AND tenant_id = 'urbanrise'", (err, row) => {
+      if (!row) {
+        const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || '12345';
+        const hashedPassword = hashPassword(adminPassword);
+        db.run("INSERT OR IGNORE INTO users (email, password, full_name, tenant_id) VALUES ('urbanrise', ?, 'Urbanrise Admin', 'urbanrise')", [hashedPassword]);
+        console.log('✅ Auto-migrated admin account: urbanrise');
+      }
+    });
+
+    db.get("SELECT id FROM borewell_state WHERE tenant_id = 'urbanrise'", (err, row) => {
+      if (!row) {
+        db.run("INSERT OR IGNORE INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'urbanrise', 'Borewell 1', 45.0)");
+        console.log('✅ Auto-migrated borewell BW-01 for urbanrise');
+      }
+    });
+
+    db.get("SELECT id FROM readings_history WHERE tenant_id = 'urbanrise' LIMIT 1", (err, row) => {
+      if (!row) {
+        const stmt = db.prepare(`INSERT INTO readings_history 
+          (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, timestamp) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+
+        const now = Date.now();
+        for (let i = 24; i >= 0; i--) {
+          const timeOffset = now - i * 3600 * 1000;
+          const timeStr = new Date(timeOffset).toISOString().replace('T', ' ').substring(0, 19);
+
+          const t = (24 - i) / 24;
+          const lvl = parseFloat((5.2 + Math.sin(t * Math.PI * 2) * 0.4 + Math.random() * 0.1).toFixed(2));
+          const ph = parseFloat((7.35 + Math.sin(t * Math.PI * 4) * 0.15 + Math.random() * 0.05).toFixed(2));
+          const tds = parseFloat((215 + Math.sin(t * Math.PI * 2) * 15 + Math.random() * 4).toFixed(1));
+          const turb = parseFloat((1.4 + Math.cos(t * Math.PI * 2) * 0.3 + Math.random() * 0.08).toFixed(2));
+          const flow = 0.0;
+          const eff = 0.0;
+          const v = 230.0;
+          const a = 0.0;
+
+          stmt.run('BW-01', 'urbanrise', flow, lvl, eff, v, a, ph, tds, turb, timeStr);
+        }
+        stmt.finalize();
+        console.log('✅ Auto-migrated initial readings history for urbanrise');
+      }
+    });
   });
 }
 

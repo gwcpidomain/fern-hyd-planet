@@ -42,7 +42,7 @@ export default function RootLayout({
             __html: `
               try {
                 var h = window.location.hostname.toLowerCase();
-                document.title = h.includes("trifecta") ? "Trifecta Insights" : "Fern Insights";
+                document.title = h.includes("trifecta") ? "Trifecta Insights" : h.includes("urbanrise") ? "Urbanrise Insights" : "Fern Insights";
               } catch(e) {}
             `,
           }}
