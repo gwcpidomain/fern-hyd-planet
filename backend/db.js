@@ -196,14 +196,15 @@ function initTables() {
     db.get("SELECT COUNT(*) as count FROM borewell_state", (err, row) => {
       if (row && row.count === 0) {
         db.run(`INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'fern', 'Borewell 1', 45.5)`);
-        db.run(`INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-02', 'fern', 'Borewell 2', 12.2)`);
-        db.run(`INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-03', 'fern', 'Borewell 3', 78.9)`);
 
         db.run(`INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'trifecta', 'Borewell 1', 35.5)`);
         db.run(`INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-02', 'trifecta', 'Borewell 2', 22.2)`);
         db.run(`INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-03', 'trifecta', 'Borewell 3', 58.9)`);
         console.log('✅ Seeded borewell state table');
       }
+
+      // Clean up dummy seeded borewells for fern (single-borewell installation)
+      db.run("DELETE FROM borewell_state WHERE tenant_id = 'fern' AND id IN ('BW-02', 'BW-03')");
     });
 
     // Seed readings history

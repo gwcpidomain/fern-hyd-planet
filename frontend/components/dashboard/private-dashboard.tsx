@@ -104,9 +104,7 @@ export function PrivateDashboard() {
         runTime: number;
         motorStartedAt?: string | null;
     }>>([
-        { id: "BW-01", isMotorOn: false, runTime: 0, motorStartedAt: null },
-        { id: "BW-02", isMotorOn: false, runTime: 0, motorStartedAt: null },
-        { id: "BW-03", isMotorOn: false, runTime: 0, motorStartedAt: null },
+        { id: "BW-01", isMotorOn: false, runTime: 0, motorStartedAt: null }
     ]);
 
     // HYDRATION GUARD INITIALIZATION

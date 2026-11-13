@@ -294,13 +294,18 @@ async function initSchema(client) {
   if (Number(bwRow.rows[0].cnt) === 0) {
     await client.batch([
       "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'fern', 'Borewell 1', 5.5)",
-      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-02', 'fern', 'Borewell 2', 3.2)",
-      "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-03', 'fern', 'Borewell 3', 4.8)",
       "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-01', 'trifecta', 'Borewell 1', 5.5)",
       "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-02', 'trifecta', 'Borewell 2', 3.2)",
       "INSERT INTO borewell_state (id, tenant_id, name, water_level) VALUES ('BW-03', 'trifecta', 'Borewell 3', 4.8)"
     ], 'write');
     console.log('✅ Borewell state seeded in Turso');
+  }
+
+  // Cleanup dummy borewells for fern (single-borewell installation)
+  try {
+    await client.execute("DELETE FROM borewell_state WHERE tenant_id = 'fern' AND id IN ('BW-02', 'BW-03')");
+  } catch (e) {
+    // Ignore
   }
 
   // Step 5: Seed 24 h of initial readings — only if empty

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { Activity, Droplets, Zap, AlertTriangle, ArrowUpRight, TrendingDown, Power, Clock } from "lucide-react"
+import { Activity, Droplets, Zap, AlertTriangle, ArrowUpRight, TrendingDown, Clock } from "lucide-react"
 
 interface BorewellMonitorProps {
   isMotorOn?: boolean
@@ -55,23 +55,24 @@ export function BorewellMonitorCard({
           {showTabs ? `Aquifer Monitor ${activeBorewellIndex + 1}` : "Aquifer Monitor"}
         </h3>
 
-        {/* Toggle Switch (Read-only status display) */}
+        {/* Real-time Motor Status Indicator Badge */}
         <div
-          className={`relative w-14 h-6 flex items-center rounded-full transition-all duration-300 border select-none pointer-events-none ${isMotorOn ? "bg-[#022c22] border-[#059669]" : "bg-slate-800 border-slate-600"
-            }`}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-wider select-none transition-all duration-300 ${
+            isMotorOn
+              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
+              : "bg-slate-800/80 text-slate-400 border-slate-700/80"
+          }`}
         >
-          <span className={`absolute text-[9px] font-semibold uppercase tracking-widest transition-all duration-300 ${isMotorOn ? "left-2 text-[#10b981]" : "right-1.5 text-slate-400"
-            }`}>
-            {isMotorOn ? "ON" : "OFF"}
-          </span>
-          <div className={`absolute h-5 w-5 rounded-full flex items-center justify-center transition-all duration-300 transform ${isMotorOn ? "translate-x-8 bg-[#10b981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "translate-x-0.5 bg-slate-600"
-            }`}>
-            <Power className={`h-3 w-3 ${isMotorOn ? "text-[#022c22]" : "text-slate-300"}`} strokeWidth={3} />
-          </div>
+          <div
+            className={`h-1.5 w-1.5 rounded-full ${
+              isMotorOn ? "bg-emerald-400 animate-pulse" : "bg-slate-500"
+            }`}
+          />
+          {isMotorOn ? "RUNNING" : "STANDBY · COMMAND AWAITED"}
         </div>
       </div>
 
-      {/* MAIN CONTENT AREA WITH SLIDING WRAPPER */}
+      {/* MAIN CONTENT AREA WITH PERMANENT 4-BOX GRID */}
       <div className="flex-1 relative mt-1 min-h-0 overflow-hidden">
         <div 
           className="h-full w-full transition-all duration-500 ease-in-out"
@@ -80,75 +81,75 @@ export function BorewellMonitorCard({
             animation: 'slideIn 0.5s ease-out forwards' 
           }}
         >
-          {isMotorOn ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 h-full">
-              {/* BOX 1: FLOW */}
-              <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
-                <div className="flex items-start justify-between">
-                  <span className="text-[11px] font-medium uppercase tracking-widest text-[#94a3b8] mt-1">Flow</span>
-                  <div className="rounded-lg border border-[#00e5ff]/20 p-1 bg-[#00e5ff]/5">
-                    <Droplets className="h-3.5 w-3.5 text-[#00e5ff]" strokeWidth={2} />
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-bold text-white tracking-tighter leading-none">{displayData.flowRate}</span>
-                  <span className="text-[9px] font-medium text-[#64748b] uppercase tracking-widest">LPM</span>
+          <div className={`grid grid-cols-2 lg:grid-cols-4 gap-2 h-full transition-all duration-500 ${isMotorOn ? "opacity-100" : "opacity-45"}`}>
+            {/* BOX 1: FLOW */}
+            <div className={`flex flex-col justify-between rounded-[20px] bg-[#0f1522] border p-3 relative overflow-hidden transition-all duration-300 ${isMotorOn ? "border-white/5" : "border-white/[0.03]"}`}>
+              <div className="flex items-start justify-between">
+                <span className={`text-[11px] font-medium uppercase tracking-widest mt-1 ${isMotorOn ? "text-[#94a3b8]" : "text-slate-500"}`}>Flow</span>
+                <div className={`rounded-lg border p-1 ${isMotorOn ? "border-[#00e5ff]/20 bg-[#00e5ff]/5 text-[#00e5ff]" : "border-white/5 bg-white/[0.02] text-slate-500"}`}>
+                  <Droplets className="h-3.5 w-3.5" strokeWidth={2} />
                 </div>
               </div>
-
-              {/* BOX 2: EFF. */}
-              <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
-                <div className="flex items-start justify-between">
-                  <span className="text-[11px] font-medium uppercase tracking-widest text-[#00e5ff] mt-1">Eff.</span>
-                  <ArrowUpRight className="h-4 w-4 text-[#00e5ff]" strokeWidth={2.5} />
-                </div>
-                <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-bold text-[#00e5ff] tracking-tighter leading-none">{displayData.efficiency}%</span>
-                  <span className="text-[9px] font-medium text-[#00e5ff]/60">(85)</span>
-                </div>
-              </div>
-
-              {/* BOX 3: POWER */}
-              <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
-                <div className="flex items-start justify-between">
-                  <span className="text-[11px] font-medium uppercase tracking-widest text-[#94a3b8] mt-1">Power</span>
-                  <div className="rounded-lg border border-[#fbbf24]/20 p-1 bg-[#fbbf24]/5 shadow-[0_0_8px_rgba(251,191,36,0.1)]">
-                    <Zap className="h-3.5 w-3.5 text-[#fbbf24]" strokeWidth={2.5} />
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-bold text-[#fbbf24] tracking-tighter leading-none">{displayData.voltage}V</span>
-                  <span className="text-[9px] font-medium text-[#fbbf24]/70">{displayData.current}A</span>
-                </div>
-              </div>
-
-              {/* BOX 4: RUN TIME */}
-              <div className="flex flex-col justify-between rounded-[20px] bg-[#0f1522] border border-white/5 p-3 relative overflow-hidden">
-                <div className="flex items-start justify-between">
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-[#94a3b8] mt-1">Run Time</span>
-                  <div className="rounded-lg border border-[#3b82f6]/20 p-1 bg-[#3b82f6]/5">
-                    <Clock className="h-3.5 w-3.5 text-[#3b82f6]" strokeWidth={2} />
-                  </div>
-                </div>
-                <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-[20px] font-bold text-[#3b82f6] tracking-tighter leading-none">{displayData.runTime}</span>
-                  <span className="text-[8px] font-medium text-[#64748b] uppercase tracking-widest">{displayData.runTimeUnit || "HRS"}</span>
-                </div>
+              <div className="flex items-baseline gap-1 mt-2">
+                <span className={`text-[20px] font-bold tracking-tighter leading-none ${isMotorOn ? "text-white" : "text-slate-400"}`}>
+                  {isMotorOn ? displayData.flowRate : "0.0"}
+                </span>
+                <span className="text-[9px] font-medium text-[#64748b] uppercase tracking-widest">LPM</span>
               </div>
             </div>
-          ) : (
-            /* STANDBY STATE */
-            <div className="h-full w-full flex flex-col items-center justify-center rounded-[20px] border border-white/5 bg-slate-900/40 backdrop-blur-md">
-              <div className="relative mb-2">
-                <div className="absolute inset-0 bg-slate-700/20 blur-xl rounded-full" />
-                <Activity className="h-6 w-6 text-slate-600 relative animate-pulse" />
+
+            {/* BOX 2: EFF. */}
+            <div className={`flex flex-col justify-between rounded-[20px] bg-[#0f1522] border p-3 relative overflow-hidden transition-all duration-300 ${isMotorOn ? "border-white/5" : "border-white/[0.03]"}`}>
+              <div className="flex items-start justify-between">
+                <span className={`text-[11px] font-medium uppercase tracking-widest mt-1 ${isMotorOn ? "text-[#00e5ff]" : "text-slate-500"}`}>Eff.</span>
+                <ArrowUpRight className={`h-4 w-4 ${isMotorOn ? "text-[#00e5ff]" : "text-slate-600"}`} strokeWidth={2.5} />
               </div>
-              <div className="text-center group">
-                <h4 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500 mb-1 transition-colors group-hover:text-slate-400">Motor in off state</h4>
-                <p className="text-[9px] text-slate-600 font-medium uppercase tracking-widest leading-none">Command Awaited</p>
+              <div className="flex items-baseline gap-1 mt-2">
+                <span className={`text-[20px] font-bold tracking-tighter leading-none ${isMotorOn ? "text-[#00e5ff]" : "text-slate-400"}`}>
+                  {isMotorOn ? `${displayData.efficiency}%` : "0%"}
+                </span>
+                <span className={`text-[9px] font-medium uppercase tracking-widest ${isMotorOn ? "text-[#00e5ff]/60" : "text-slate-600"}`}>
+                  {isMotorOn ? "(85)" : "(0)"}
+                </span>
               </div>
             </div>
-          )}
+
+            {/* BOX 3: POWER */}
+            <div className={`flex flex-col justify-between rounded-[20px] bg-[#0f1522] border p-3 relative overflow-hidden transition-all duration-300 ${isMotorOn ? "border-white/5" : "border-white/[0.03]"}`}>
+              <div className="flex items-start justify-between">
+                <span className={`text-[11px] font-medium uppercase tracking-widest mt-1 ${isMotorOn ? "text-[#94a3b8]" : "text-slate-500"}`}>Power</span>
+                <div className={`rounded-lg border p-1 ${isMotorOn ? "border-[#fbbf24]/20 bg-[#fbbf24]/5 text-[#fbbf24] shadow-[0_0_8px_rgba(251,191,36,0.1)]" : "border-white/5 bg-white/[0.02] text-slate-500"}`}>
+                  <Zap className="h-3.5 w-3.5" strokeWidth={2.5} />
+                </div>
+              </div>
+              <div className="flex items-baseline gap-1 mt-2">
+                <span className={`text-[20px] font-bold tracking-tighter leading-none ${isMotorOn ? "text-[#fbbf24]" : "text-slate-400"}`}>
+                  {isMotorOn ? `${displayData.voltage}V` : "0V"}
+                </span>
+                <span className={`text-[9px] font-medium ${isMotorOn ? "text-[#fbbf24]/70" : "text-slate-600"}`}>
+                  {isMotorOn ? `${displayData.current}A` : "0.0A"}
+                </span>
+              </div>
+            </div>
+
+            {/* BOX 4: RUN TIME */}
+            <div className={`flex flex-col justify-between rounded-[20px] bg-[#0f1522] border p-3 relative overflow-hidden transition-all duration-300 ${isMotorOn ? "border-white/5" : "border-white/[0.03]"}`}>
+              <div className="flex items-start justify-between">
+                <span className={`text-[10px] font-medium uppercase tracking-widest mt-1 ${isMotorOn ? "text-[#94a3b8]" : "text-slate-500"}`}>Run Time</span>
+                <div className={`rounded-lg border p-1 ${isMotorOn ? "border-[#3b82f6]/20 bg-[#3b82f6]/5 text-[#3b82f6]" : "border-white/5 bg-white/[0.02] text-slate-500"}`}>
+                  <Clock className="h-3.5 w-3.5" strokeWidth={2} />
+                </div>
+              </div>
+              <div className="flex items-baseline gap-1 mt-2">
+                <span className={`text-[20px] font-bold tracking-tighter leading-none ${isMotorOn ? "text-[#3b82f6]" : "text-slate-400"}`}>
+                  {isMotorOn ? displayData.runTime : "0.0"}
+                </span>
+                <span className="text-[8px] font-medium text-[#64748b] uppercase tracking-widest">
+                  {isMotorOn ? (displayData.runTimeUnit || "HRS") : "HRS"}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
