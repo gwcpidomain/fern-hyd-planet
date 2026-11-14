@@ -19,9 +19,13 @@ const { startTuyaPoller } = require('./tuyaService');
 const app = express();
 
 // Ensure dynamic coordinates update on startup (updates both local SQLite and cloud Turso)
-db.run("UPDATE tenants SET latitude = 17.177306, longitude = 78.470667 WHERE id = 'fern'", (err) => {
+db.run("UPDATE tenants SET latitude = 17.177306, longitude = 78.470667, address = 'Sy 438,439, Fern Villas, Srisailam Hwy, Maheshwaram, Malikdanguda, Maheshwaram, Telangana 501359' WHERE id = 'fern'", (err) => {
   if (err) console.error("⚠️ Failed to update Fern location coordinates:", err.message);
   else console.log("📍 Fern location coordinates updated successfully to 17.177306, 78.470667");
+});
+db.run("UPDATE tenants SET latitude = 17.095541, longitude = 78.297372, address = 'Urbanrise Trendy Homes, Kothur 37WW+6X8, Unnamed Road, Mekaguda, Telangana 509228', logo_url = '/urbanrise-logo.png' WHERE id = 'urbanrise'", (err) => {
+  if (err) console.error("⚠️ Failed to update Urbanrise location:", err.message);
+  else console.log("📍 Urbanrise coordinates updated to 17.095541, 78.297372");
 });
 
 // SECURITY FIX (H-08): Trust first proxy hop (Render's load balancer) for correct req.ip

@@ -1236,6 +1236,12 @@ export function PrivateDashboard() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            {/* Co-branding badge — Urbanrise only */}
+                            {tenantConfig?.id === 'urbanrise' && (
+                                <span className="text-[9px] tracking-[0.14em] uppercase text-slate-500/70 font-medium select-none hidden sm:inline-flex items-center gap-1">
+                                    Powered by <span className="text-slate-400 font-semibold tracking-[0.1em]">Planet Insights</span>
+                                </span>
+                            )}
                             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${locationStatus === 'ONLINE'
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 : locationStatus === 'PARTIAL'

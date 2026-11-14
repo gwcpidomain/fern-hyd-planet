@@ -338,7 +338,7 @@ async function initSchema(client) {
     const urbTenant = await client.execute("SELECT id FROM tenants WHERE id = 'urbanrise'");
     if (urbTenant.rows.length === 0) {
       await client.execute({
-        sql: "INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('urbanrise', 'Urbanrise Insights', '/logo.png', '#10b981', '#06b6d4', 17.5348, 78.3688, 'Urbanrise On Cloud 33, Bachupally, Hyderabad, Telangana 500090')",
+        sql: "INSERT INTO tenants (id, name, logo_url, primary_color, secondary_color, latitude, longitude, address) VALUES ('urbanrise', 'Urbanrise Insights', '/urbanrise-logo.png', '#10b981', '#06b6d4', 17.095541, 78.297372, 'Urbanrise Trendy Homes, Kothur 37WW+6X8, Unnamed Road, Mekaguda, Telangana 509228')",
         args: []
       });
       console.log('✅ Auto-migrated tenant: urbanrise in Turso');

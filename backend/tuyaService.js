@@ -6,13 +6,11 @@
  * Background poller for the amiciSense 13-in-1 WiFi Air Quality Monitor
  * connected via Tuya Cloud OpenAPI.
  *
- * Required environment variables:
- *   TUYA_CLIENT_ID     — Access ID from Tuya Developer Console
- *   TUYA_CLIENT_SECRET — Access Secret from Tuya Developer Console
- *   TUYA_DEVICE_ID     — Device ID of the amiciSense unit
- *   TUYA_REGION_URL    — Regional API endpoint (e.g. https://openapi.tuyain.com)
+ * Supports two tenants (fern + urbanrise) via isolated pollers.
+ * Fern  : reads TUYA_FERN_*     vars (falls back to legacy TUYA_* vars)
+ * Urbanrise: reads TUYA_URBANRISE_* vars only
  *
- * The service is started from server.js only when all four env vars are present.
+ * The service is started from server.js only when env vars are present.
  * It does NOT touch any frontend code or UI behaviour.
  */
 
@@ -85,111 +83,117 @@ function parseTuyaStatus(statusArray) {
   return { pm25, pm10, pm1, co2, tvoc, hcho, temp, humidity, aqi };
 }
 
-// ── Main exported function: startTuyaPoller ──────────────────────────────────
+// ── Main exported function: startTuyaPoller (multi-tenant) ───────────────────
 // Called once from server.js after the DB and WebSocket server are ready.
-// Parameters:
-//   db        — the existing db instance from db.js / db-turso.js
-//   broadcast — the existing broadcast(data) helper from server.js
+// Reads TUYA_FERN_* and TUYA_URBANRISE_* env var sets and starts an isolated
+// 60-second poller for each configured site. Legacy TUYA_* vars are supported
+// as a fallback for the fern site to avoid breaking the existing Render config.
 function startTuyaPoller(db, broadcast) {
-  const {
-    TUYA_CLIENT_ID,
-    TUYA_CLIENT_SECRET,
-    TUYA_DEVICE_ID,
-    TUYA_REGION_URL,
-    TUYA_TENANT_ID,   // Which tenant this physical device belongs to (e.g. 'fern')
-  } = process.env;
+  const sites = [];
 
-  if (!TUYA_CLIENT_ID || !TUYA_CLIENT_SECRET || !TUYA_DEVICE_ID || !TUYA_REGION_URL) {
-    console.warn('⚠️  TUYA: One or more required env vars missing. Tuya Cloud poller will NOT start.');
-    console.warn('   Required: TUYA_CLIENT_ID, TUYA_CLIENT_SECRET, TUYA_DEVICE_ID, TUYA_REGION_URL');
+  // ── Fern: prefer new TUYA_FERN_* vars, fall back to legacy TUYA_* vars ──────
+  const fernClientId  = process.env.TUYA_FERN_CLIENT_ID     || process.env.TUYA_CLIENT_ID;
+  const fernSecret    = process.env.TUYA_FERN_CLIENT_SECRET  || process.env.TUYA_CLIENT_SECRET;
+  const fernDeviceId  = process.env.TUYA_FERN_DEVICE_ID      || process.env.TUYA_DEVICE_ID;
+  const fernRegion    = process.env.TUYA_FERN_REGION_URL      || process.env.TUYA_REGION_URL || 'https://openapi.tuyain.com';
+  if (fernClientId && fernSecret && fernDeviceId) {
+    sites.push({
+      tenantId: process.env.TUYA_TENANT_ID || 'fern',
+      clientId: fernClientId,
+      secret:   fernSecret,
+      deviceId: fernDeviceId,
+      region:   fernRegion,
+    });
+  }
+
+  // ── Urbanrise: only new-style TUYA_URBANRISE_* vars ─────────────────────────
+  const urbClientId   = process.env.TUYA_URBANRISE_CLIENT_ID;
+  const urbSecret     = process.env.TUYA_URBANRISE_CLIENT_SECRET;
+  const urbDeviceId   = process.env.TUYA_URBANRISE_DEVICE_ID;
+  const urbRegion     = process.env.TUYA_URBANRISE_REGION_URL || 'https://openapi.tuyain.com';
+  if (urbClientId && urbSecret && urbDeviceId) {
+    sites.push({
+      tenantId: 'urbanrise',
+      clientId: urbClientId,
+      secret:   urbSecret,
+      deviceId: urbDeviceId,
+      region:   urbRegion,
+    });
+  }
+
+  if (sites.length === 0) {
+    console.warn('⚠️  TUYA: No sites configured. Tuya poller will NOT start.');
     return;
   }
 
-  // Which tenant owns this Tuya device — defaults to 'fern' if not explicitly set
-  const tenantId = TUYA_TENANT_ID || 'fern';
-  console.log(`🏠 Tuya poller will write AQI data to tenant: '${tenantId}'`);
+  // ── Start one isolated poller per site ───────────────────────────────────────
+  for (const site of sites) {
+    const tuya = new TuyaContext({
+      baseUrl:   site.region,
+      accessKey: site.clientId,
+      secretKey: site.secret,
+    });
+    console.log(`🌱 Tuya poller started for tenant '${site.tenantId}' — device: ${site.deviceId} @ ${site.region}`);
+    console.log('   Polling every 60 seconds for AQI data...');
 
-  // Initialise the Tuya SDK context — handles access token fetch + refresh automatically
-  const tuya = new TuyaContext({
-    baseUrl:   TUYA_REGION_URL,
-    accessKey: TUYA_CLIENT_ID,
-    secretKey: TUYA_CLIENT_SECRET,
-  });
+    // IIFE to capture site + tuya per iteration (avoids loop closure bug)
+    (function (s, ctx) {
+      async function poll() {
+        try {
+          const response = await ctx.request({
+            method: 'GET',
+            path:   '/v1.0/iot-03/devices/status',
+            query:  { device_ids: s.deviceId },
+          });
 
-  console.log(`🌱 Tuya Cloud poller started — device: ${TUYA_DEVICE_ID} @ ${TUYA_REGION_URL}`);
-  console.log('   Polling every 60 seconds for AQI data...');
-
-  async function poll() {
-    try {
-      // Fetch live device status from Tuya Cloud
-      const response = await tuya.request({
-        method: 'GET',
-        path:   '/v1.0/iot-03/devices/status',
-        query:  { device_ids: TUYA_DEVICE_ID },
-      });
-
-      if (!response.success) {
-        console.error('❌ Tuya API returned failure:', JSON.stringify(response));
-        return;
-      }
-
-      const deviceResult = response.result && response.result[0];
-      if (!deviceResult || !Array.isArray(deviceResult.status)) {
-        console.error('❌ Tuya: Unexpected response shape:', JSON.stringify(response.result));
-        return;
-      }
-
-      // Parse and scale sensor values
-      const { pm25, pm10, pm1, co2, tvoc, hcho, temp, humidity, aqi } = parseTuyaStatus(deviceResult.status);
-      const category = getCategory(aqi);
-      const dominant = calculateCpcbSubIndex(pm25, 'pm25') >= calculateCpcbSubIndex(pm10, 'pm10') ? 'pm25' : 'pm10';
-
-      // Write to aqi_history table — scoped to tenant so each site's AQI is isolated
-      db.run(
-        `INSERT INTO aqi_history (pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi, tenant_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi, tenantId],
-        function (err) {
-          if (err) {
-            console.error('❌ Tuya: DB insert error:', err.message);
-          } else {
-            console.log(
-              `🌬️ [Tuya|${tenantId}] AQI=${aqi} (${category}) | PM2.5=${pm25} PM10=${pm10} PM1=${pm1} ` +
-              `CO2=${co2} TVOC=${tvoc.toFixed(3)} HCHO=${hcho.toFixed(3)} ` +
-              `Temp=${temp}°C Humidity=${humidity}%`
-            );
+          if (!response.success) {
+            console.error(`❌ Tuya[${s.tenantId}]: API failure:`, JSON.stringify(response));
+            return;
           }
+
+          const deviceResult = response.result && response.result[0];
+          if (!deviceResult || !Array.isArray(deviceResult.status)) {
+            console.error(`❌ Tuya[${s.tenantId}]: Unexpected response shape:`, JSON.stringify(response.result));
+            return;
+          }
+
+          const { pm25, pm10, pm1, co2, tvoc, hcho, temp, humidity, aqi } = parseTuyaStatus(deviceResult.status);
+          const category = getCategory(aqi);
+          const dominant = calculateCpcbSubIndex(pm25, 'pm25') >= calculateCpcbSubIndex(pm10, 'pm10') ? 'pm25' : 'pm10';
+
+          db.run(
+            `INSERT INTO aqi_history (pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi, tenant_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi, s.tenantId],
+            (err) => {
+              if (err) {
+                console.error(`❌ Tuya[${s.tenantId}] DB error:`, err.message);
+              } else {
+                console.log(
+                  `🌬️ [Tuya|${s.tenantId}] AQI=${aqi} (${category}) PM2.5=${pm25} PM10=${pm10} PM1=${pm1} ` +
+                  `CO2=${co2} TVOC=${tvoc.toFixed(3)} HCHO=${hcho.toFixed(3)} ` +
+                  `Temp=${temp}°C Humidity=${humidity}%`
+                );
+              }
+            }
+          );
+
+          broadcast({
+            type:      'aqi',
+            tenant_id: s.tenantId,
+            timestamp: new Date().toISOString(),
+            data: { pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi, category, dominant_pollutant: dominant },
+          });
+
+        } catch (err) {
+          console.error(`❌ Tuya[${s.tenantId}] Poll error:`, err.message || err);
         }
-      );
+      }
 
-      // Broadcast to dashboard clients — tagged with tenant_id so each subdomain
-      // only receives its own site's AQI readings via the WebSocket filter.
-      broadcast({
-        type: 'aqi',
-        tenant_id: tenantId,
-        timestamp: new Date().toISOString(),
-        data: {
-          pm25,
-          pm10,
-          co2,
-          tvoc,
-          hcho,
-          temp,
-          humidity,
-          aqi,
-          category,
-          dominant_pollutant: dominant,
-        },
-      });
-
-    } catch (err) {
-      console.error('❌ Tuya: Poll error:', err.message || err);
-    }
+      poll();
+      setInterval(poll, 60 * 1000);
+    })(site, tuya);
   }
-
-  // Run immediately on startup, then repeat every 60 seconds
-  poll();
-  setInterval(poll, 60 * 1000);
 }
 
 module.exports = { startTuyaPoller };
