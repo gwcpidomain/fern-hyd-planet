@@ -1226,7 +1226,11 @@ export function PrivateDashboard() {
                                 </div>
                             </button>
                             <div>
-                                <img src={tenantConfig?.logo_url || "/logo.png"} alt={tenantConfig?.name || "Planet Insights"} className="h-6 object-contain" />
+                                <img 
+                                    src={tenantConfig?.id === 'urbanrise' ? "/urbanrise-logo.png" : (tenantConfig?.logo_url || "/logo.png")} 
+                                    alt={tenantConfig?.name || "Planet Insights"} 
+                                    className={`${tenantConfig?.id === 'urbanrise' ? 'h-7 md:h-8' : 'h-6'} object-contain`} 
+                                />
                             </div>
                             {currentLocation && (
                                 <div className="ml-2 px-2 py-0.5 rounded-full bg-white/10 text-[10px] font-mono text-emerald-400 border border-emerald-500/20">
