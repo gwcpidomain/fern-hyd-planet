@@ -1229,7 +1229,7 @@ export function PrivateDashboard() {
                                 <img 
                                     src={tenantConfig?.id === 'urbanrise' ? "/urbanrise-logo.png" : (tenantConfig?.logo_url || "/logo.png")} 
                                     alt={tenantConfig?.name || "Planet Insights"} 
-                                    className={`${tenantConfig?.id === 'urbanrise' ? 'h-7 md:h-8' : 'h-6'} object-contain`} 
+                                    className={`${tenantConfig?.id === 'urbanrise' ? 'h-6 md:h-7' : 'h-6'} object-contain`} 
                                 />
                             </div>
                             {currentLocation && (
