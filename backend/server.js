@@ -28,6 +28,11 @@ db.run("UPDATE tenants SET latitude = 17.095541, longitude = 78.297372, address 
   else console.log("📍 Urbanrise coordinates updated to 17.095541, 78.297372");
 });
 
+// Ensure any stale motor running state is normalized on startup if motor is OFF
+db.run("UPDATE borewell_state SET is_motor_on = 0, current = 0.0, motor_started_at = NULL WHERE flow_rate <= 1.0 AND (current_status = 'OFF' OR current_status = 'STANDBY' OR current_status IS NULL)", (err) => {
+  if (!err) console.log("🔄 Verified initial borewell standby states");
+});
+
 // SECURITY FIX (H-08): Trust first proxy hop (Render's load balancer) for correct req.ip
 app.set('trust proxy', 1);
 
@@ -122,7 +127,19 @@ app.get('/api/health', (req, res) => {
 app.get('/api/borewells', requireDashboardAuth, (req, res) => {
   db.all("SELECT * FROM borewell_state WHERE tenant_id = ? ORDER BY id ASC", [req.tenantId], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
+    const sanitized = (rows || []).map(r => {
+      if (r.is_motor_on === 0 || !r.is_motor_on) {
+        return {
+          ...r,
+          current: 0.0,
+          efficiency: 0.0,
+          current_status: (r.current_status && !['ON', 'RUNNING', 'HIGH', 'LOW', 'MID'].includes(r.current_status.toUpperCase())) ? r.current_status : 'OFF',
+          motor_started_at: null
+        };
+      }
+      return r;
+    });
+    res.json(sanitized);
   });
 });
 
@@ -324,7 +341,7 @@ function handleWaterPush(tenantId, payload, res) {
       const flow = safeFloat(rawFlow, current_state.flow_rate !== undefined ? current_state.flow_rate : 0.0);
 
       const rawCurrent = payload.current !== undefined ? payload.current : (payload.a !== undefined ? payload.a : null);
-      const a = safeFloat(rawCurrent, current_state.current !== undefined ? current_state.current : 0.0);
+      const rawA = safeFloat(rawCurrent, current_state.current !== undefined ? current_state.current : 0.0);
 
       const phVal = safeFloat(payload.ph);
       const tdsVal = safeFloat(payload.tds);
@@ -337,23 +354,60 @@ function handleWaterPush(tenantId, payload, res) {
       // Check if incoming payload is a zero-packet (sensor dropout/offline condition)
       const isZeroWaterPayload = (phVal === 0 || phVal === 0.0) && (tdsVal === 0 || tdsVal === 0.0);
 
-      // 1. Derive Voltage (v) based on Current (a)
-      let v = payload.v !== undefined ? safeFloat(payload.v) : (a > 1.1 ? (228.0 - (a * 0.4) + (Math.sin(Date.now() / 5000) * 1.5)) : (235.0 + (Math.sin(Date.now() / 10000) * 1.0)));
-      v = parseFloat(Number(v).toFixed(1));
+      // 1. Determine Motor Status (is_motor_on)
+      // Rule 1: Water flow rate > 1.0 LPM confirms pump is actively lifting water.
+      // Rule 2: Explicit current_status / status from transmitter:
+      //         'OFF' or 'STANDBY' strictly marks motor as OFF.
+      //         'ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING' marks motor as ON.
+      // Rule 3: Backward compatibility (e.g. Fern / legacy gateways without explicit current_status):
+      //         Fallback to CT current threshold (rawA > 1.1).
+      const rawStatus = payload.current_status !== undefined 
+        ? payload.current_status 
+        : (payload.status !== undefined ? payload.status : null);
+      const statusStr = (rawStatus || '').toString().trim().toUpperCase();
+      const hasExplicitStatus = Boolean(rawStatus);
 
-      // 2. Derive Pump Efficiency (eff)
-      let eff = payload.eff !== undefined ? safeFloat(payload.eff) : 0.0;
-      if (payload.eff === undefined && a > 1.1 && flow > 0) {
-        eff = Math.min(92, Math.max(50, Math.round((flow * 14.5) / a)));
+      let is_motor_on = 0;
+      if (flow > 1.0) {
+        is_motor_on = 1;
+      } else if (hasExplicitStatus) {
+        if (statusStr === 'OFF' || statusStr === 'STANDBY') {
+          is_motor_on = 0;
+        } else if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusStr)) {
+          is_motor_on = 1;
+        } else {
+          is_motor_on = (rawA > 1.1) ? 1 : 0;
+        }
+      } else {
+        is_motor_on = (rawA > 1.1 || flow > 1.0) ? 1 : 0;
       }
 
-      // 3. Derive Water Level (wl) - simulating drawdown and aquifer recharge
+      // 2. Resolve Effective Current (a) and Status Label (current_status)
+      // When motor is confirmed OFF, force displayed current to 0.0 A (eliminates uncalibrated floating CT noise)
+      const a = is_motor_on === 1 ? rawA : 0.0;
+      const current_status = is_motor_on === 1
+        ? (['OFF', 'STANDBY', ''].includes(statusStr) ? 'ON' : (rawStatus || 'ON'))
+        : (statusStr || 'OFF');
+
+      // 3. Derive Voltage (v) based on motor state
+      let v = payload.v !== undefined ? safeFloat(payload.v) : (is_motor_on === 1 ? (228.0 - (a * 0.4) + (Math.sin(Date.now() / 5000) * 1.5)) : (230.0 + (Math.sin(Date.now() / 10000) * 1.0)));
+      v = parseFloat(Number(v).toFixed(1));
+
+      // 4. Derive Pump Efficiency (eff)
+      let eff = payload.eff !== undefined ? safeFloat(payload.eff) : 0.0;
+      if (payload.eff === undefined && is_motor_on === 1 && a > 1.1 && flow > 0) {
+        eff = Math.min(92, Math.max(50, Math.round((flow * 14.5) / a)));
+      } else if (is_motor_on === 0) {
+        eff = 0.0;
+      }
+
+      // 5. Derive Water Level (wl) - simulating drawdown and aquifer recharge
       let wl = wlVal;
       if (isZeroWaterPayload || wl === 0) {
         wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
       } else if (wl === null) {
         let last_wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
-        if (a > 1.1 && flow > 0) {
+        if (is_motor_on === 1 && flow > 0) {
           // Drawdown: Water level decreases as we pump it out
           wl = Math.max(1.2, last_wl - 0.02 * (flow / 40.0));
         } else {
@@ -363,11 +417,11 @@ function handleWaterPush(tenantId, payload, res) {
       }
       wl = parseFloat(Number(wl).toFixed(2));
 
-      // 4. Derive Run Time (rt)
+      // 6. Derive Run Time (rt)
       let rt = payload.rt !== undefined ? safeFloat(payload.rt) : null;
       if (rt === null) {
         let last_rt = current_state.run_time_total !== undefined ? current_state.run_time_total : 0.0;
-        if (a > 1.1) {
+        if (is_motor_on === 1) {
           let deltaHours = 1.0 / 3600.0;
           if (current_state.last_updated) {
             const lastTime = new Date(current_state.last_updated + " UTC").getTime();
@@ -391,17 +445,11 @@ function handleWaterPush(tenantId, payload, res) {
       const rawTotalLiters = payload.total_liters !== undefined ? payload.total_liters : null;
       const total_liters = safeFloat(rawTotalLiters, current_state.total_liters !== undefined ? current_state.total_liters : 0.0);
 
-      const current_status = payload.current_status !== undefined ? payload.current_status : (current_state.current_status !== undefined ? current_state.current_status : 'OFF');
       const water_status = isZeroWaterPayload ? (current_state.water_status || 'PROBE DRY') : (payload.water_status !== undefined ? payload.water_status : (current_state.water_status !== undefined ? current_state.water_status : 'NORMAL'));
       const turbidity_status = isZeroWaterPayload ? (current_state.turbidity_status || 'CLEAR') : (payload.turbidity_status !== undefined ? payload.turbidity_status : (current_state.turbidity_status !== undefined ? current_state.turbidity_status : 'CLEAR'));
       const tds_status = isZeroWaterPayload ? (current_state.tds_status || 'GOOD') : (payload.tds_status !== undefined ? payload.tds_status : (current_state.tds_status !== undefined ? current_state.tds_status : 'GOOD'));
 
-      // Derive motor status: ON if current (amps) > 1.1A OR flow rate > 5 LPM.
-      // Flow rate is used as secondary confirmation because CT sensors can read
-      // below threshold at low loads, yet the pump is physically running (proven by flow).
-      const is_motor_on = (a > 1.1 || flow > 5.0) ? 1 : 0;
-
-      // Track motor_started_at for session duration
+      // 7. Track motor_started_at for session duration
       let motor_started_at = current_state.motor_started_at || null;
       if (is_motor_on === 1) {
         if (!current_state.is_motor_on || !motor_started_at) {

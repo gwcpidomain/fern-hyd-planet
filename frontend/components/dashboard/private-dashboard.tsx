@@ -449,21 +449,22 @@ export function PrivateDashboard() {
                                 }
                             }
 
+                            const isMotorActive = active.is_motor_on === 1;
                             return {
                                 ...prev,
                                 level: isDbZero ? (prev?.level ?? 0) : (active.water_level ?? prev?.level ?? 0),
                                 ph: isDbZero ? (prev?.ph ?? 7.2) : (active.ph || prev?.ph || 7.2),
                                 tds: isDbZero ? (prev?.tds ?? 250) : (active.tds || prev?.tds || 250),
-                                irms: active.current ?? prev?.irms ?? 0,
-                                flowRate: active.flow_rate ?? prev?.flowRate ?? 0,
-                                efficiency: active.efficiency ?? prev?.efficiency ?? 0,
-                                voltage: active.voltage ?? prev?.voltage ?? 0,
+                                irms: isMotorActive ? (active.current ?? prev?.irms ?? 0) : 0,
+                                flowRate: isMotorActive ? (active.flow_rate ?? prev?.flowRate ?? 0) : 0,
+                                efficiency: isMotorActive ? (active.efficiency ?? prev?.efficiency ?? 0) : 0,
+                                voltage: active.voltage ?? prev?.voltage ?? 230,
                                 runTime: active.run_time_total ?? prev?.runTime ?? 0,
-                                motorStartedAt: active.motor_started_at || null,
+                                motorStartedAt: isMotorActive ? (active.motor_started_at || null) : null,
                                 turbidity: isDbZero ? (prev?.turbidity ?? 1.2) : (active.turbidity || prev?.turbidity || 1.2),
-                                pump_status: active.current_status || (active.is_motor_on ? "MID" : "OFF"),
+                                pump_status: isMotorActive ? (active.current_status || "MID") : "OFF",
                                 totalLiters: active.total_liters ?? prev?.totalLiters,
-                                currentStatus: active.current_status,
+                                currentStatus: isMotorActive ? (active.current_status || "ON") : "OFF",
                                 waterStatus: active.water_status,
                                 turbidityStatus: active.turbidity_status,
                                 tdsStatus: active.tds_status,
@@ -560,14 +561,34 @@ export function PrivateDashboard() {
 
             // 1. Process status updates for ALL borewells so their states remain correct
             // Force motor state to OFF if a zero-value packet is received
-            const isIncomingMotorOn = !isZeroWater && (
-                (wsData as any).isMotorOn === true ||
-                incoming.isMotorOn === true ||
-                (incoming.flowRate !== undefined && incoming.flowRate > 5.0) ||
-                (incoming.flow !== undefined && incoming.flow > 5.0) ||
-                incoming.status === 'ON' ||
-                (incomingIrms !== undefined && incomingIrms > 1.1)
-            );
+            const hasExplicitMotorFlag = (wsData as any).isMotorOn !== undefined || incoming.isMotorOn !== undefined;
+            const explicitMotorOn = (wsData as any).isMotorOn !== undefined 
+                ? Boolean((wsData as any).isMotorOn) 
+                : Boolean(incoming.isMotorOn);
+
+            const hasExplicitStatus = Boolean(incoming.currentStatus || incoming.status);
+            const statusUpper = (incoming.currentStatus || incoming.status || '').toString().trim().toUpperCase();
+            const hasFlow = (incoming.flowRate !== undefined && incoming.flowRate > 1.0) || (incoming.flow !== undefined && incoming.flow > 1.0);
+
+            let isIncomingMotorOn = false;
+            if (!isZeroWater) {
+                if (hasFlow) {
+                    isIncomingMotorOn = true;
+                } else if (hasExplicitMotorFlag) {
+                    isIncomingMotorOn = explicitMotorOn;
+                } else if (hasExplicitStatus) {
+                    if (statusUpper === 'OFF' || statusUpper === 'STANDBY') {
+                        isIncomingMotorOn = false;
+                    } else if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusUpper)) {
+                        isIncomingMotorOn = true;
+                    } else {
+                        isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms > 1.1);
+                    }
+                } else {
+                    isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms > 1.1);
+                }
+            }
+
             if (hasPumpData || isZeroWater) {
                 const incomingStartedAt = (wsData as any).motorStartedAt || incoming.motorStartedAt || null;
                 setBorewells(prev => prev.map(bw => {
@@ -628,12 +649,16 @@ export function PrivateDashboard() {
                 // Derive pump/water status band for gauges
                 let derivedStatus: string | null = prev?.pump_status ?? null;
 
-                if (hasPumpData) {
-                    if (incoming.status && typeof incoming.status === "string") {
+                if (!isIncomingMotorOn) {
+                    derivedStatus = "OFF";
+                } else if (hasPumpData) {
+                    if (incoming.status && typeof incoming.status === "string" && incoming.status.toUpperCase() !== 'OFF') {
                         derivedStatus = (incoming as any).status.toUpperCase();
+                    } else if (incoming.currentStatus && incoming.currentStatus.toUpperCase() !== 'OFF') {
+                        derivedStatus = incoming.currentStatus.toUpperCase();
                     } else {
                         const irms = incomingIrms ?? 0;
-                        if (irms < 2) derivedStatus = "OFF";
+                        if (irms < 2) derivedStatus = "LOW";
                         else if (irms < 4) derivedStatus = "LOW";
                         else if (irms < 7) derivedStatus = "MID";
                         else if (irms < 12) derivedStatus = "HIGH";
@@ -652,16 +677,16 @@ export function PrivateDashboard() {
                     level: incomingLevel ?? (prev?.level ?? 4.5),
                     ph: incoming.ph ?? (prev?.ph ?? 7.2),
                     tds: incoming.tds ?? (prev?.tds ?? 250),
-                    irms: incomingIrms ?? (prev?.irms ?? 0),
-                    flowRate: incoming.flowRate ?? (prev?.flowRate ?? 0),
-                    efficiency: incoming.efficiency ?? (prev?.efficiency ?? 0),
-                    voltage: incoming.voltage ?? (prev?.voltage ?? 0),
+                    irms: isIncomingMotorOn ? (incomingIrms ?? (prev?.irms ?? 0)) : 0,
+                    flowRate: isIncomingMotorOn ? (incoming.flowRate ?? (prev?.flowRate ?? 0)) : 0,
+                    efficiency: isIncomingMotorOn ? (incoming.efficiency ?? (prev?.efficiency ?? 0)) : 0,
+                    voltage: incoming.voltage ?? (prev?.voltage ?? 230),
                     runTime: incoming.runTime ?? (prev?.runTime ?? 0),
                     motorStartedAt: isIncomingMotorOn ? ((wsData as any).motorStartedAt || incoming.motorStartedAt || prev?.motorStartedAt || new Date().toISOString()) : null,
                     turbidity: incoming.turbidity ?? (prev?.turbidity ?? 1.2),
-                    pump_status: incoming.currentStatus ?? (hasPumpData ? (derivedStatus ?? 'N/A') : (prev?.pump_status ?? 'N/A')),
+                    pump_status: isIncomingMotorOn ? (incoming.currentStatus ?? (hasPumpData ? (derivedStatus ?? 'N/A') : (prev?.pump_status ?? 'N/A'))) : 'OFF',
                     totalLiters: incoming.totalLiters ?? prev?.totalLiters,
-                    currentStatus: incoming.currentStatus ?? prev?.currentStatus,
+                    currentStatus: isIncomingMotorOn ? (incoming.currentStatus ?? prev?.currentStatus) : 'OFF',
                     waterStatus: incoming.waterStatus ?? prev?.waterStatus,
                     turbidityStatus: incoming.turbidityStatus ?? prev?.turbidityStatus,
                     tdsStatus: incoming.tdsStatus ?? prev?.tdsStatus,
@@ -672,7 +697,7 @@ export function PrivateDashboard() {
                         tds: newTdsArr,
                         turbidity: newTurbidityArr
                     }
-                }
+                };
             });
         } else if (wsData && (wsData.type as string) === 'control_update') {
             const incomingId = (wsData as any).id;
@@ -905,21 +930,22 @@ export function PrivateDashboard() {
                             }
                         }
                         const isDbZero = active.ph === 0 && active.tds === 0 && (active.water_level === 0 || active.water_level === null);
+                        const isMotorActive = active.is_motor_on === 1;
                         setWaterData(prev => ({
                             ...prev,
                             level: isDbZero ? (prev?.level ?? 0) : (active.water_level ?? prev?.level ?? 0),
                             ph: isDbZero ? (prev?.ph ?? 7.2) : (active.ph || prev?.ph || 7.2),
                             tds: isDbZero ? (prev?.tds ?? 250) : (active.tds || prev?.tds || 250),
-                            irms: active.current ?? prev?.irms ?? 0,
-                            flowRate: active.flow_rate ?? prev?.flowRate ?? 0,
-                            efficiency: active.efficiency ?? prev?.efficiency ?? 0,
-                            voltage: active.voltage ?? prev?.voltage ?? 0,
+                            irms: isMotorActive ? (active.current ?? prev?.irms ?? 0) : 0,
+                            flowRate: isMotorActive ? (active.flow_rate ?? prev?.flowRate ?? 0) : 0,
+                            efficiency: isMotorActive ? (active.efficiency ?? prev?.efficiency ?? 0) : 0,
+                            voltage: active.voltage ?? prev?.voltage ?? 230,
                             runTime: active.run_time_total ?? prev?.runTime ?? 0,
-                            motorStartedAt: active.motor_started_at || null,
+                            motorStartedAt: isMotorActive ? (active.motor_started_at || null) : null,
                             turbidity: isDbZero ? (prev?.turbidity ?? 1.2) : (active.turbidity || prev?.turbidity || 1.2),
-                            pump_status: active.current_status || (active.is_motor_on ? "MID" : "OFF"),
+                            pump_status: isMotorActive ? (active.current_status || "MID") : "OFF",
                             totalLiters: active.total_liters ?? prev?.totalLiters,
-                            currentStatus: active.current_status,
+                            currentStatus: isMotorActive ? (active.current_status || "ON") : "OFF",
                             waterStatus: active.water_status,
                             turbidityStatus: active.turbidity_status,
                             tdsStatus: active.tds_status
@@ -1062,25 +1088,28 @@ export function PrivateDashboard() {
         chartData: { labels: [], pm25: [], pm10: [], co2: [], tvoc: [], hcho: [], temp: [], humidity: [] }
     }, [airData]);
 
-    const safeWaterData = useMemo(() => ({
-        level: Number(waterData?.level ?? 0),
-        ph: Number(waterData?.ph ?? 7.2),
-        tds: Number(waterData?.tds ?? 250),
-        irms: Number(waterData?.irms ?? 0),
-        pump_status: waterData?.pump_status ?? 'N/A',
-        flowRate: Number(waterData?.flowRate ?? 0),
-        efficiency: Number(waterData?.efficiency ?? 0),
-        voltage: Number(waterData?.voltage ?? 0),
-        runTime: Number(waterData?.runTime ?? 0),
-        motorStartedAt: waterData?.motorStartedAt || null,
-        turbidity: Number(waterData?.turbidity ?? 1.2),
-        totalLiters: (waterData?.totalLiters !== undefined && waterData?.totalLiters !== null) ? Number(waterData.totalLiters) : undefined,
-        currentStatus: waterData?.currentStatus,
-        waterStatus: waterData?.waterStatus,
-        turbidityStatus: waterData?.turbidityStatus,
-        tdsStatus: waterData?.tdsStatus,
-        chartData: waterData?.chartData || { labels: [], level: [], ph: [], tds: [] }
-    }), [waterData]);
+    const safeWaterData = useMemo(() => {
+        const motorRunning = isMotorOn;
+        return {
+            level: Number(waterData?.level ?? 0),
+            ph: Number(waterData?.ph ?? 7.2),
+            tds: Number(waterData?.tds ?? 250),
+            irms: motorRunning ? Number(waterData?.irms ?? 0) : 0,
+            pump_status: motorRunning ? (waterData?.pump_status ?? 'MID') : 'OFF',
+            flowRate: motorRunning ? Number(waterData?.flowRate ?? 0) : 0,
+            efficiency: motorRunning ? Number(waterData?.efficiency ?? 0) : 0,
+            voltage: Number(waterData?.voltage ?? 230),
+            runTime: Number(waterData?.runTime ?? 0),
+            motorStartedAt: motorRunning ? (waterData?.motorStartedAt || null) : null,
+            turbidity: Number(waterData?.turbidity ?? 1.2),
+            totalLiters: (waterData?.totalLiters !== undefined && waterData?.totalLiters !== null) ? Number(waterData.totalLiters) : undefined,
+            currentStatus: motorRunning ? (waterData?.currentStatus || 'ON') : 'OFF',
+            waterStatus: waterData?.waterStatus,
+            turbidityStatus: waterData?.turbidityStatus,
+            tdsStatus: waterData?.tdsStatus,
+            chartData: waterData?.chartData || { labels: [], level: [], ph: [], tds: [] }
+        };
+    }, [waterData, isMotorOn]);
     const maxPm25Recorded = airData ? Math.max(airData.pm25, ...(airData.chartData?.pm25 || [])) : 0;
     const maxWaterLevelRecorded = waterData ? Math.max(waterData.level, ...(waterData.chartData?.level || [])) : 0;
 
