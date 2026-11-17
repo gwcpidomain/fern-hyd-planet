@@ -581,11 +581,13 @@ export function PrivateDashboard() {
                         isIncomingMotorOn = false;
                     } else if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusUpper)) {
                         isIncomingMotorOn = true;
+                    } else if (statusUpper === 'CRITICAL') {
+                        isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms >= 3.5);
                     } else {
-                        isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms > 1.1);
+                        isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms >= 3.5);
                     }
                 } else {
-                    isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms > 1.1);
+                    isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms >= 3.5);
                 }
             }
 

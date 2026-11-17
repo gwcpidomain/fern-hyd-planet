@@ -355,12 +355,13 @@ function handleWaterPush(tenantId, payload, res) {
       const isZeroWaterPayload = (phVal === 0 || phVal === 0.0) && (tdsVal === 0 || tdsVal === 0.0);
 
       // 1. Determine Motor Status (is_motor_on)
-      // Rule 1: Water flow rate > 1.0 LPM confirms pump is actively lifting water.
+      // Rule 1: Water flow rate > 1.0 LPM confirms pump is actively lifting water -> Motor is ON.
       // Rule 2: Explicit current_status / status from transmitter:
       //         'OFF' or 'STANDBY' strictly marks motor as OFF.
       //         'ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING' marks motor as ON.
-      // Rule 3: Backward compatibility (e.g. Fern / legacy gateways without explicit current_status):
-      //         Fallback to CT current threshold (rawA > 1.1).
+      //         'CRITICAL' or unlisted status: only ON if drawing genuine motor load (>= 3.5A, matching Fern's 4-14A range).
+      // Rule 3: Backward compatibility (flow <= 1.0 and no explicit status):
+      //         Idle noise (< 3.5A) is forced OFF (0.0A); genuine motor load (>= 3.5A) is ON.
       const rawStatus = payload.current_status !== undefined 
         ? payload.current_status 
         : (payload.status !== undefined ? payload.status : null);
@@ -375,11 +376,13 @@ function handleWaterPush(tenantId, payload, res) {
           is_motor_on = 0;
         } else if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusStr)) {
           is_motor_on = 1;
+        } else if (statusStr === 'CRITICAL') {
+          is_motor_on = (rawA >= 3.5) ? 1 : 0;
         } else {
-          is_motor_on = (rawA > 1.1) ? 1 : 0;
+          is_motor_on = (rawA >= 3.5) ? 1 : 0;
         }
       } else {
-        is_motor_on = (rawA > 1.1 || flow > 1.0) ? 1 : 0;
+        is_motor_on = (rawA >= 3.5) ? 1 : 0;
       }
 
       // 2. Resolve Effective Current (a) and Status Label (current_status)
