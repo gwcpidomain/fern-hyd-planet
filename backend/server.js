@@ -312,9 +312,19 @@ app.post('/api/control', requireDashboardAuth, validateControlPayload, (req, res
       motor_started_at: state === 1 ? nowIso : null
     });
 
+    if (state === 0) {
+      motorHoldDownMap.delete(`${req.tenantId}:${id}`);
+    } else {
+      motorHoldDownMap.set(`${req.tenantId}:${id}`, { lastActiveTime: Date.now(), lastFlow: 10.0, lastAmps: 6.5 });
+    }
+
     res.json({ status: 'Command Sent', id, state: command, motor_started_at: state === 1 ? nowIso : null });
   });
 });
+
+// Motor hold-down tracker: prevents pump from flickering to STANDBY during momentary flow gaps between pulse meter readings
+const motorHoldDownMap = new Map(); // key: `${tenantId}:${id}` -> { lastActiveTime: number, lastFlow: number, lastAmps: number }
+const MOTOR_HOLD_DOWN_MS = 45000; // 45 seconds hold-down grace period
 
 // Helper: core water ingestion logic — shared by /api/push/:tenantId and legacy /api/push
 function handleWaterPush(tenantId, payload, res) {
@@ -354,14 +364,29 @@ function handleWaterPush(tenantId, payload, res) {
       // Check if incoming payload is a zero-packet (sensor dropout/offline condition)
       const isZeroWaterPayload = (phVal === 0 || phVal === 0.0) && (tdsVal === 0 || tdsVal === 0.0);
 
-      // 1. Determine Motor Status (is_motor_on)
-      // Rule 1: Water flow rate > 1.0 LPM confirms pump is actively lifting water -> Motor is ON.
-      // Rule 2: Explicit current_status / status from transmitter:
-      //         'OFF' or 'STANDBY' strictly marks motor as OFF.
-      //         'ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING' marks motor as ON.
-      //         'CRITICAL' or unlisted status: only ON if drawing genuine motor load (>= 3.5A, matching Fern's 4-14A range).
-      // Rule 3: Backward compatibility (flow <= 1.0 and no explicit status):
-      //         Idle noise (< 3.5A) is forced OFF (0.0A); genuine motor load (>= 3.5A) is ON.
+      // 1. Determine Motor Status (is_motor_on) & Apply Hold-Down Grace Period
+      const borewellKey = `${tenantId}:${id}`;
+      const nowMs = Date.now();
+      const holdState = motorHoldDownMap.get(borewellKey) || { lastActiveTime: 0, lastFlow: 0.0, lastAmps: 0.0 };
+
+      // Auto-normalize current if hardware is sending 10x scaled amperes (e.g. Fern ~64A -> ~6.4A)
+      // Standard borewell motors draw 4-14A; 64A is a 10x hardware multiplier from the CT sensor
+      let normalizedRawA = rawA;
+      if (tenantId === 'fern' && rawA >= 20.0 && rawA <= 120.0) {
+        normalizedRawA = parseFloat((rawA / 10.0).toFixed(2));
+      }
+
+      // Check active flow
+      const hasActiveFlow = flow > 1.0;
+      if (hasActiveFlow) {
+        holdState.lastActiveTime = nowMs;
+        holdState.lastFlow = flow;
+        if (normalizedRawA > 0) holdState.lastAmps = normalizedRawA;
+        motorHoldDownMap.set(borewellKey, holdState);
+      }
+
+      const isWithinGracePeriod = (nowMs - holdState.lastActiveTime) < MOTOR_HOLD_DOWN_MS;
+
       const rawStatus = payload.current_status !== undefined 
         ? payload.current_status 
         : (payload.status !== undefined ? payload.status : null);
@@ -369,28 +394,61 @@ function handleWaterPush(tenantId, payload, res) {
       const hasExplicitStatus = Boolean(rawStatus);
 
       let is_motor_on = 0;
-      if (flow > 1.0) {
+      let effectiveFlow = flow;
+
+      if (hasActiveFlow) {
         is_motor_on = 1;
+        effectiveFlow = flow;
+      } else if (isWithinGracePeriod && holdState.lastActiveTime > 0) {
+        // Active pumping cycle: retain motor ON state across momentary pulse gaps
+        is_motor_on = 1;
+        effectiveFlow = holdState.lastFlow > 0 ? holdState.lastFlow : (current_state.flow_rate || 5.0);
       } else if (hasExplicitStatus) {
         if (statusStr === 'OFF' || statusStr === 'STANDBY') {
           is_motor_on = 0;
+          effectiveFlow = 0.0;
         } else if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusStr)) {
           is_motor_on = 1;
         } else if (statusStr === 'CRITICAL') {
-          is_motor_on = (rawA >= 3.5) ? 1 : 0;
+          is_motor_on = (normalizedRawA >= 3.5) ? 1 : 0;
         } else {
-          is_motor_on = (rawA >= 3.5) ? 1 : 0;
+          is_motor_on = (normalizedRawA >= 3.5) ? 1 : 0;
         }
       } else {
-        is_motor_on = (rawA >= 3.5) ? 1 : 0;
+        is_motor_on = (normalizedRawA >= 3.5) ? 1 : 0;
+      }
+
+      if (is_motor_on === 0) {
+        effectiveFlow = 0.0;
       }
 
       // 2. Resolve Effective Current (a) and Status Label (current_status)
-      // When motor is confirmed OFF, force displayed current to 0.0 A (eliminates uncalibrated floating CT noise)
-      const a = is_motor_on === 1 ? rawA : 0.0;
-      const current_status = is_motor_on === 1
-        ? (['OFF', 'STANDBY', ''].includes(statusStr) ? 'ON' : (rawStatus || 'ON'))
-        : (statusStr || 'OFF');
+      let a = 0.0;
+      if (is_motor_on === 1) {
+        if (normalizedRawA > 0) {
+          a = normalizedRawA;
+        } else if (holdState.lastAmps > 0) {
+          a = holdState.lastAmps;
+        } else {
+          a = current_state.current || 0.0;
+        }
+      }
+      a = parseFloat(Number(a).toFixed(2));
+
+      let current_status = 'OFF';
+      if (is_motor_on === 1) {
+        if (hasExplicitStatus && !['OFF', 'STANDBY', ''].includes(statusStr)) {
+          current_status = rawStatus;
+        } else {
+          // Infer from calibrated amperes based on Fern hardware thresholds (4-6 Low, 7-11 Mid, 11-14 High)
+          if (a >= 11.0) current_status = 'HIGH';
+          else if (a >= 7.0) current_status = 'MID';
+          else if (a >= 4.0) current_status = 'LOW';
+          else current_status = 'CHARGING';
+        }
+      } else {
+        current_status = 'STANDBY';
+      }
 
       // 3. Derive Voltage (v) based on motor state
       let v = payload.v !== undefined ? safeFloat(payload.v) : (is_motor_on === 1 ? (228.0 - (a * 0.4) + (Math.sin(Date.now() / 5000) * 1.5)) : (230.0 + (Math.sin(Date.now() / 10000) * 1.0)));
@@ -398,8 +456,8 @@ function handleWaterPush(tenantId, payload, res) {
 
       // 4. Derive Pump Efficiency (eff)
       let eff = payload.eff !== undefined ? safeFloat(payload.eff) : 0.0;
-      if (payload.eff === undefined && is_motor_on === 1 && a > 1.1 && flow > 0) {
-        eff = Math.min(92, Math.max(50, Math.round((flow * 14.5) / a)));
+      if (payload.eff === undefined && is_motor_on === 1 && a > 1.1 && effectiveFlow > 0) {
+        eff = Math.min(92, Math.max(50, Math.round((effectiveFlow * 14.5) / a)));
       } else if (is_motor_on === 0) {
         eff = 0.0;
       }
@@ -468,7 +526,7 @@ function handleWaterPush(tenantId, payload, res) {
       ph = ?, tds = ?, turbidity = ?, is_motor_on = ?, total_liters = ?, current_status = ?, 
       water_status = ?, turbidity_status = ?, tds_status = ?, motor_started_at = ?, last_updated = CURRENT_TIMESTAMP 
       WHERE id = ? AND tenant_id = ?`,
-        [flow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
+        [effectiveFlow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
         function (updateErr) {
           if (updateErr) {
             console.error("DB Update Error during ingestion:", updateErr.message);
@@ -479,14 +537,14 @@ function handleWaterPush(tenantId, payload, res) {
           db.run(`INSERT INTO readings_history 
           (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status) 
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, tenantId, flow, wl, eff, v, a, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status],
+            [id, tenantId, effectiveFlow, wl, eff, v, a, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status],
             function (insertErr) {
               if (insertErr) {
                 console.error("DB History insertion error during ingestion:", insertErr.message);
                 // Non-fatal to client response, but logged.
               }
 
-              console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${flow} LPM, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
+              console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${effectiveFlow} LPM, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
 
               // Broadcast to Frontend
               broadcast({
@@ -497,7 +555,7 @@ function handleWaterPush(tenantId, payload, res) {
                 isMotorOn: is_motor_on === 1,
                 motorStartedAt: motor_started_at,
                 data: {
-                  flowRate: flow,
+                  flowRate: effectiveFlow,
                   efficiency: eff,
                   voltage: v,
                   current: a,
