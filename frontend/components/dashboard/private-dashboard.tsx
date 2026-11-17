@@ -166,7 +166,7 @@ export function PrivateDashboard() {
 
 
     const now = currentTime;
-    const isAirOnline = lastAirTime > 0 && (now - lastAirTime < 30000);
+    const isAirOnline = lastAirTime > 0 && (now - lastAirTime < 90000);
     const isWaterOnline = lastWaterTime > 0 && (now - lastWaterTime < 30000);
 
     const isAirOffline = !isAirOnline;
@@ -1514,7 +1514,7 @@ export function PrivateDashboard() {
                                                      {
                                                          device_id: "AQI-NODE-01",
                                                          type: "AIR QUALITY SENSOR",
-                                                         status: (wsConnected && lastAirTime > 0 && (currentTime - lastAirTime < 30000)) ? "ONLINE" : "OFFLINE"
+                                                         status: (wsConnected && lastAirTime > 0 && (currentTime - lastAirTime < 90000)) ? "ONLINE" : "OFFLINE"
                                                      }
                                              ].map((dev) => (
                                                  <div

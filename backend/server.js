@@ -1136,10 +1136,11 @@ wss.on('connection', (ws, req) => {
   const urlParams = new URL(req.url, `http://${req.headers.host || 'localhost'}`).searchParams;
   const token = urlParams.get('token');
   const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || null;
+  const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
 
   const handleAuthResult = (isAuthorized) => {
     if (!isAuthorized) {
-      console.warn(`🚫 WebSocket connection rejected: Invalid or missing token from ${req.socket.remoteAddress}`);
+      console.warn(`🚫 WebSocket connection rejected: Invalid or missing token from ${clientIp}`);
       // Send message to client before closing to make debugging easier
       ws.send(JSON.stringify({ type: 'error', message: 'Unauthorized WebSocket connection.' }));
       ws.close(4001, 'Unauthorized');

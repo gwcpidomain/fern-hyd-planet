@@ -21,7 +21,8 @@ export function useRealtimeData(locationId: string, token: string | null, tenant
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
-        if (!locationId) {
+        // Guard: Do not attempt WebSocket connection without a valid location and token
+        if (!locationId || !token) {
             setIsLive(false);
             setIsOffline(true);
             return;
@@ -29,7 +30,7 @@ export function useRealtimeData(locationId: string, token: string | null, tenant
 
         const apiBase = getApiBaseUrl();
         const wsBase = apiBase.replace(/^http/, "ws"); // http->ws, https->wss
-        const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : "";
+        const tokenQuery = `?token=${encodeURIComponent(token)}`;
         const wsUrl = `${wsBase}${tokenQuery}`;
 
         let reconnectAttempts = 0;
@@ -67,10 +68,16 @@ export function useRealtimeData(locationId: string, token: string | null, tenant
                 }
             };
 
-            ws.onclose = () => {
-                console.log("❌ WebSocket Disconnected");
+            ws.onclose = (event: CloseEvent) => {
+                console.log(`❌ WebSocket Disconnected (code: ${event.code})`);
                 setIsConnected(false);
                 setIsLive(false);
+
+                // If unauthorized (4001), server rejected token — do not reconnect in a loop
+                if (event.code === 4001) {
+                    console.warn("🚫 WebSocket unauthorized (4001). Reconnect paused until authentication is refreshed.");
+                    return;
+                }
 
                 // Queue auto-reconnect with exponential backoff (max 30s)
                 const delay = Math.min(3000 * Math.pow(2, reconnectAttempts), 30000);
