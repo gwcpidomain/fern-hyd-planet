@@ -396,7 +396,14 @@ function handleWaterPush(tenantId, payload, res) {
       let is_motor_on = 0;
       let effectiveFlow = flow;
 
-      if (hasActiveFlow) {
+      if (statusStr === 'OFF' || statusStr === 'STANDBY') {
+        // Explicit motor OFF from hardware or controller: immediate transition, cancel hold-down
+        is_motor_on = 0;
+        effectiveFlow = 0.0;
+        holdState.lastActiveTime = 0;
+        holdState.lastFlow = 0.0;
+        motorHoldDownMap.set(borewellKey, holdState);
+      } else if (hasActiveFlow) {
         is_motor_on = 1;
         effectiveFlow = flow;
       } else if (isWithinGracePeriod && holdState.lastActiveTime > 0) {
@@ -404,10 +411,7 @@ function handleWaterPush(tenantId, payload, res) {
         is_motor_on = 1;
         effectiveFlow = holdState.lastFlow > 0 ? holdState.lastFlow : (current_state.flow_rate || 5.0);
       } else if (hasExplicitStatus) {
-        if (statusStr === 'OFF' || statusStr === 'STANDBY') {
-          is_motor_on = 0;
-          effectiveFlow = 0.0;
-        } else if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusStr)) {
+        if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusStr)) {
           is_motor_on = 1;
         } else if (statusStr === 'CRITICAL') {
           is_motor_on = (normalizedRawA >= 3.5) ? 1 : 0;
