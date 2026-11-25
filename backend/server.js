@@ -376,19 +376,27 @@ function handleWaterPush(tenantId, payload, res) {
         normalizedRawA = parseFloat((rawA / 10.0).toFixed(2));
       }
 
-      // Check active flow
+      // PHASE 1 FIX: 2.0x Calibration multiplier for Fern starter panel matching
+      // Physical starter panel at Fern displays 440V and 14-15A (CT clamp reads ~7.5A on single phase)
+      let calibratedA = normalizedRawA;
+      if (tenantId === 'fern') {
+        calibratedA = parseFloat((normalizedRawA * 2.0).toFixed(2));
+      }
+
+      // PHASE 1 FIX: Flow-Governed Active State
+      // Flow > 1.0 LPM is the master determinant of active borewell pumping.
       const hasActiveFlow = flow > 1.0;
       if (hasActiveFlow) {
         holdState.lastActiveTime = nowMs;
         holdState.lastFlow = flow;
-        if (normalizedRawA > 0) holdState.lastAmps = normalizedRawA;
+        if (calibratedA > 0) holdState.lastAmps = calibratedA;
         motorHoldDownMap.set(borewellKey, holdState);
       }
 
       const isWithinGracePeriod = (nowMs - holdState.lastActiveTime) < MOTOR_HOLD_DOWN_MS;
 
-      const rawStatus = payload.current_status !== undefined 
-        ? payload.current_status 
+      const rawStatus = payload.current_status !== undefined
+        ? payload.current_status
         : (payload.status !== undefined ? payload.status : null);
       const statusStr = (rawStatus || '').toString().trim().toUpperCase();
       const hasExplicitStatus = Boolean(rawStatus);
@@ -402,35 +410,28 @@ function handleWaterPush(tenantId, payload, res) {
         effectiveFlow = 0.0;
         holdState.lastActiveTime = 0;
         holdState.lastFlow = 0.0;
+        holdState.lastAmps = 0.0;
         motorHoldDownMap.set(borewellKey, holdState);
       } else if (hasActiveFlow) {
+        // Active pumping flow confirmed
         is_motor_on = 1;
         effectiveFlow = flow;
       } else if (isWithinGracePeriod && holdState.lastActiveTime > 0) {
-        // Active pumping cycle: retain motor ON state across momentary pulse gaps
+        // Active pumping cycle: retain motor ON state across momentary pulse gaps (< 45s)
         is_motor_on = 1;
         effectiveFlow = holdState.lastFlow > 0 ? holdState.lastFlow : (current_state.flow_rate || 5.0);
-      } else if (hasExplicitStatus) {
-        if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusStr)) {
-          is_motor_on = 1;
-        } else if (statusStr === 'CRITICAL') {
-          is_motor_on = (normalizedRawA >= 3.5) ? 1 : 0;
-        } else {
-          is_motor_on = (normalizedRawA >= 3.5) ? 1 : 0;
-        }
       } else {
-        is_motor_on = (normalizedRawA >= 3.5) ? 1 : 0;
-      }
-
-      if (is_motor_on === 0) {
+        // Flow <= 1.0 LPM and grace period expired:
+        // Pumping has stopped (or dry churn). Standby state enforced.
+        is_motor_on = 0;
         effectiveFlow = 0.0;
       }
 
       // 2. Resolve Effective Current (a) and Status Label (current_status)
       let a = 0.0;
       if (is_motor_on === 1) {
-        if (normalizedRawA > 0) {
-          a = normalizedRawA;
+        if (calibratedA > 0) {
+          a = calibratedA;
         } else if (holdState.lastAmps > 0) {
           a = holdState.lastAmps;
         } else {
@@ -443,8 +444,14 @@ function handleWaterPush(tenantId, payload, res) {
       if (is_motor_on === 1) {
         if (hasExplicitStatus && !['OFF', 'STANDBY', ''].includes(statusStr)) {
           current_status = rawStatus;
+        } else if (tenantId === 'fern') {
+          // Fern calibrated status on the 14-16A scale (Mid = normal 11-18A)
+          if (a >= 18.0) current_status = 'HIGH';
+          else if (a >= 11.0) current_status = 'MID';
+          else if (a >= 6.0) current_status = 'LOW';
+          else current_status = 'CHARGING';
         } else {
-          // Infer from calibrated amperes based on Fern hardware thresholds (4-6 Low, 7-11 Mid, 11-14 High)
+          // Standard single-phase thresholds (4-6 Low, 7-11 Mid, 11-14 High)
           if (a >= 11.0) current_status = 'HIGH';
           else if (a >= 7.0) current_status = 'MID';
           else if (a >= 4.0) current_status = 'LOW';
@@ -454,136 +461,150 @@ function handleWaterPush(tenantId, payload, res) {
         current_status = 'STANDBY';
       }
 
-      // 3. Derive Voltage (v) based on motor state
-      let v = payload.v !== undefined ? safeFloat(payload.v) : (is_motor_on === 1 ? (228.0 - (a * 0.4) + (Math.sin(Date.now() / 5000) * 1.5)) : (230.0 + (Math.sin(Date.now() / 10000) * 1.0)));
+      // 3. Derive Voltage (v) based on motor state and tenant electrical system
+      let v;
+      if (payload.v !== undefined) {
+        v = safeFloat(payload.v);
+      } else if (tenantId === 'fern') {
+        // PHASE 1 FIX: Fern 3-phase line voltage centered at 440V to match starter panel display
+        v = is_motor_on === 1
+          ? (440.0 - (a * 0.3) + (Math.sin(Date.now() / 5000) * 1.5))
+          : (440.0 + (Math.sin(Date.now() / 10000) * 1.0));
+      } else {
+        // Single-phase baseline centered at 230V
+        v = is_motor_on === 1
+          ? (228.0 - (a * 0.4) + (Math.sin(Date.now() / 5000) * 1.5))
+          : (230.0 + (Math.sin(Date.now() / 10000) * 1.0));
+      }
       v = parseFloat(Number(v).toFixed(1));
 
       // 4. Derive Pump Efficiency (eff)
       let eff = payload.eff !== undefined ? safeFloat(payload.eff) : 0.0;
       if (payload.eff === undefined && is_motor_on === 1 && a > 1.1 && effectiveFlow > 0) {
-        eff = Math.min(92, Math.max(50, Math.round((effectiveFlow * 14.5) / a)));
+        const effCurrent = (tenantId === 'fern') ? (a / 2.0) : a;
+        eff = Math.min(92, Math.max(50, Math.round((effectiveFlow * 14.5) / effCurrent)));
       } else if (is_motor_on === 0) {
         eff = 0.0;
       }
 
-      // 5. Derive Water Level (wl) - simulating drawdown and aquifer recharge
-      let wl = wlVal;
-      if (isZeroWaterPayload || wl === 0) {
-        wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
-      } else if (wl === null) {
-        let last_wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
-        if (is_motor_on === 1 && flow > 0) {
-          // Drawdown: Water level decreases as we pump it out
-          wl = Math.max(1.2, last_wl - 0.02 * (flow / 40.0));
-        } else {
-          // Recovery: Water level slowly rises back up to the aquifer static level (5.5m)
-          wl = Math.min(5.5, last_wl + 0.005);
-        }
-      }
-      wl = parseFloat(Number(wl).toFixed(2));
-
-      // 6. Derive Run Time (rt)
-      let rt = payload.rt !== undefined ? safeFloat(payload.rt) : null;
-      if (rt === null) {
-        let last_rt = current_state.run_time_total !== undefined ? current_state.run_time_total : 0.0;
-        if (is_motor_on === 1) {
-          let deltaHours = 1.0 / 3600.0;
-          if (current_state.last_updated) {
-            const lastTime = new Date(current_state.last_updated + " UTC").getTime();
-            const deltaMs = Date.now() - lastTime;
-            if (deltaMs > 0 && deltaMs < 300000) {
-              deltaHours = deltaMs / (1000.0 * 3600.0);
+          // 5. Derive Water Level (wl) - simulating drawdown and aquifer recharge
+          let wl = wlVal;
+          if (isZeroWaterPayload || wl === 0) {
+            wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
+          } else if (wl === null) {
+            let last_wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
+            if (is_motor_on === 1 && flow > 0) {
+              // Drawdown: Water level decreases as we pump it out
+              wl = Math.max(1.2, last_wl - 0.02 * (flow / 40.0));
+            } else {
+              // Recovery: Water level slowly rises back up to the aquifer static level (5.5m)
+              wl = Math.min(5.5, last_wl + 0.005);
             }
           }
-          rt = last_rt + deltaHours;
-        } else {
-          rt = last_rt;
-        }
-      }
-      rt = parseFloat(Number(rt).toFixed(3));
+          wl = parseFloat(Number(wl).toFixed(2));
 
-      // Preserve last values on zero packet
-      const ph = isZeroWaterPayload ? (current_state.ph !== undefined ? current_state.ph : 7.2) : (phVal !== null ? phVal : (current_state.ph !== undefined ? current_state.ph : 7.2));
-      const tds = isZeroWaterPayload ? (current_state.tds !== undefined ? current_state.tds : 250.0) : (tdsVal !== null ? tdsVal : (current_state.tds !== undefined ? current_state.tds : 250.0));
-      const turbidity = isZeroWaterPayload ? (current_state.turbidity !== undefined ? current_state.turbidity : 1.2) : (turbVal !== null ? turbVal : (current_state.turbidity !== undefined ? current_state.turbidity : 1.2));
+          // 6. Derive Run Time (rt)
+          let rt = payload.rt !== undefined ? safeFloat(payload.rt) : null;
+          if (rt === null) {
+            let last_rt = current_state.run_time_total !== undefined ? current_state.run_time_total : 0.0;
+            if (is_motor_on === 1) {
+              let deltaHours = 1.0 / 3600.0;
+              if (current_state.last_updated) {
+                const lastTime = new Date(current_state.last_updated + " UTC").getTime();
+                const deltaMs = Date.now() - lastTime;
+                if (deltaMs > 0 && deltaMs < 300000) {
+                  deltaHours = deltaMs / (1000.0 * 3600.0);
+                }
+              }
+              rt = last_rt + deltaHours;
+            } else {
+              rt = last_rt;
+            }
+          }
+          rt = parseFloat(Number(rt).toFixed(3));
 
-      const rawTotalLiters = payload.total_liters !== undefined ? payload.total_liters : null;
-      const total_liters = safeFloat(rawTotalLiters, current_state.total_liters !== undefined ? current_state.total_liters : 0.0);
+          // Preserve last values on zero packet
+          const ph = isZeroWaterPayload ? (current_state.ph !== undefined ? current_state.ph : 7.2) : (phVal !== null ? phVal : (current_state.ph !== undefined ? current_state.ph : 7.2));
+          const tds = isZeroWaterPayload ? (current_state.tds !== undefined ? current_state.tds : 250.0) : (tdsVal !== null ? tdsVal : (current_state.tds !== undefined ? current_state.tds : 250.0));
+          const turbidity = isZeroWaterPayload ? (current_state.turbidity !== undefined ? current_state.turbidity : 1.2) : (turbVal !== null ? turbVal : (current_state.turbidity !== undefined ? current_state.turbidity : 1.2));
 
-      const water_status = isZeroWaterPayload ? (current_state.water_status || 'PROBE DRY') : (payload.water_status !== undefined ? payload.water_status : (current_state.water_status !== undefined ? current_state.water_status : 'NORMAL'));
-      const turbidity_status = isZeroWaterPayload ? (current_state.turbidity_status || 'CLEAR') : (payload.turbidity_status !== undefined ? payload.turbidity_status : (current_state.turbidity_status !== undefined ? current_state.turbidity_status : 'CLEAR'));
-      const tds_status = isZeroWaterPayload ? (current_state.tds_status || 'GOOD') : (payload.tds_status !== undefined ? payload.tds_status : (current_state.tds_status !== undefined ? current_state.tds_status : 'GOOD'));
+          const rawTotalLiters = payload.total_liters !== undefined ? payload.total_liters : null;
+          const total_liters = safeFloat(rawTotalLiters, current_state.total_liters !== undefined ? current_state.total_liters : 0.0);
 
-      // 7. Track motor_started_at for session duration
-      let motor_started_at = current_state.motor_started_at || null;
-      if (is_motor_on === 1) {
-        if (!current_state.is_motor_on || !motor_started_at) {
-          motor_started_at = new Date().toISOString();
-        }
-      } else {
-        motor_started_at = null;
-      }
+          const water_status = isZeroWaterPayload ? (current_state.water_status || 'PROBE DRY') : (payload.water_status !== undefined ? payload.water_status : (current_state.water_status !== undefined ? current_state.water_status : 'NORMAL'));
+          const turbidity_status = isZeroWaterPayload ? (current_state.turbidity_status || 'CLEAR') : (payload.turbidity_status !== undefined ? payload.turbidity_status : (current_state.turbidity_status !== undefined ? current_state.turbidity_status : 'CLEAR'));
+          const tds_status = isZeroWaterPayload ? (current_state.tds_status || 'GOOD') : (payload.tds_status !== undefined ? payload.tds_status : (current_state.tds_status !== undefined ? current_state.tds_status : 'GOOD'));
 
-      // Perform database UPDATE of live state — scoped to tenant
-      db.run(`UPDATE borewell_state SET 
+          // 7. Track motor_started_at for session duration
+          let motor_started_at = current_state.motor_started_at || null;
+          if (is_motor_on === 1) {
+            if (!current_state.is_motor_on || !motor_started_at) {
+              motor_started_at = new Date().toISOString();
+            }
+          } else {
+            motor_started_at = null;
+          }
+
+          // Perform database UPDATE of live state — scoped to tenant
+          db.run(`UPDATE borewell_state SET 
       flow_rate = ?, efficiency = ?, voltage = ?, current = ?, run_time_total = ?, water_level = ?, 
       ph = ?, tds = ?, turbidity = ?, is_motor_on = ?, total_liters = ?, current_status = ?, 
       water_status = ?, turbidity_status = ?, tds_status = ?, motor_started_at = ?, last_updated = CURRENT_TIMESTAMP 
       WHERE id = ? AND tenant_id = ?`,
-        [effectiveFlow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
-        function (updateErr) {
-          if (updateErr) {
-            console.error("DB Update Error during ingestion:", updateErr.message);
-            return res.status(500).json({ error: "Failed to update borewell state." });
-          }
-
-          // AUDIT FIX (Finding 3.1 — Critical): INSERT reading into history on every ingest, not just 5-min intervals
-          db.run(`INSERT INTO readings_history 
-          (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, tenantId, effectiveFlow, wl, eff, v, a, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status],
-            function (insertErr) {
-              if (insertErr) {
-                console.error("DB History insertion error during ingestion:", insertErr.message);
-                // Non-fatal to client response, but logged.
+            [effectiveFlow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
+            function (updateErr) {
+              if (updateErr) {
+                console.error("DB Update Error during ingestion:", updateErr.message);
+                return res.status(500).json({ error: "Failed to update borewell state." });
               }
 
-              console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${effectiveFlow} LPM, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
+              // AUDIT FIX (Finding 3.1 — Critical): INSERT reading into history on every ingest, not just 5-min intervals
+              db.run(`INSERT INTO readings_history 
+          (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [id, tenantId, effectiveFlow, wl, eff, v, a, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status],
+                function (insertErr) {
+                  if (insertErr) {
+                    console.error("DB History insertion error during ingestion:", insertErr.message);
+                    // Non-fatal to client response, but logged.
+                  }
 
-              // Broadcast to Frontend
-              broadcast({
-                type: 'water',
-                id: id,
-                tenant_id: tenantId,
-                timestamp: new Date().toISOString(),
-                isMotorOn: is_motor_on === 1,
-                motorStartedAt: motor_started_at,
-                data: {
-                  flowRate: effectiveFlow,
-                  efficiency: eff,
-                  voltage: v,
-                  current: a,
-                  runTime: rt,
-                  motorStartedAt: motor_started_at,
-                  waterLevel: wl,
-                  ph: ph,
-                  tds: tds,
-                  turbidity: turbidity,
-                  totalLiters: total_liters,
-                  currentStatus: current_status,
-                  waterStatus: water_status,
-                  turbidityStatus: turbidity_status,
-                  tdsStatus: tds_status
+                  console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${effectiveFlow} LPM, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
+
+                  // Broadcast to Frontend
+                  broadcast({
+                    type: 'water',
+                    id: id,
+                    tenant_id: tenantId,
+                    timestamp: new Date().toISOString(),
+                    isMotorOn: is_motor_on === 1,
+                    motorStartedAt: motor_started_at,
+                    data: {
+                      flowRate: effectiveFlow,
+                      efficiency: eff,
+                      voltage: v,
+                      current: a,
+                      runTime: rt,
+                      motorStartedAt: motor_started_at,
+                      waterLevel: wl,
+                      ph: ph,
+                      tds: tds,
+                      turbidity: turbidity,
+                      totalLiters: total_liters,
+                      currentStatus: current_status,
+                      waterStatus: water_status,
+                      turbidityStatus: turbidity_status,
+                      tdsStatus: tds_status
+                    }
+                  });
+
+                  // AUDIT FIX (Finding 2.2 — Critical): Send response inside the db run callback block only
+                  res.json({ status: 'Success', id });
                 }
-              });
-
-              // AUDIT FIX (Finding 2.2 — Critical): Send response inside the db run callback block only
-              res.json({ status: 'Success', id });
+              );
             }
           );
-        }
-      );
-    });
+        });
   });
 }
 
@@ -1104,37 +1125,37 @@ app.get('/api/weather', requireDashboardAuth, async (req, res) => {
       // Map only the fields we use on the dashboard
       const shaped = {
         location: raw.location?.name || tenant.name,
-        region:   raw.location?.region || '',
-        country:  raw.location?.country || '',
-        lat:      raw.location?.lat,
-        lon:      raw.location?.lon,
+        region: raw.location?.region || '',
+        country: raw.location?.country || '',
+        lat: raw.location?.lat,
+        lon: raw.location?.lon,
         // Current conditions
-        temp_c:       raw.current?.temp_c,
-        feelslike_c:  raw.current?.feelslike_c,
-        condition:    raw.current?.condition?.text || 'N/A',
+        temp_c: raw.current?.temp_c,
+        feelslike_c: raw.current?.feelslike_c,
+        condition: raw.current?.condition?.text || 'N/A',
         condition_icon: raw.current?.condition?.icon || null,
-        wind_kph:     raw.current?.wind_kph,
-        wind_degree:  raw.current?.wind_degree,
-        wind_dir:     raw.current?.wind_dir,
-        gust_kph:     raw.current?.gust_kph,
-        humidity:     raw.current?.humidity,
-        uv:           raw.current?.uv,
-        precip_mm:    raw.current?.precip_mm,
-        vis_km:       raw.current?.vis_km,
-        pressure_mb:  raw.current?.pressure_mb,
-        cloud:        raw.current?.cloud,
+        wind_kph: raw.current?.wind_kph,
+        wind_degree: raw.current?.wind_degree,
+        wind_dir: raw.current?.wind_dir,
+        gust_kph: raw.current?.gust_kph,
+        humidity: raw.current?.humidity,
+        uv: raw.current?.uv,
+        precip_mm: raw.current?.precip_mm,
+        vis_km: raw.current?.vis_km,
+        pressure_mb: raw.current?.pressure_mb,
+        cloud: raw.current?.cloud,
         // Air quality (surrounding, from WeatherAPI — distinct from on-site sensor)
-        pm25:      raw.current?.air_quality?.pm2_5,
-        pm10:      raw.current?.air_quality?.pm10,
-        co:        raw.current?.air_quality?.co,
-        no2:       raw.current?.air_quality?.no2,
-        o3:        raw.current?.air_quality?.o3,
+        pm25: raw.current?.air_quality?.pm2_5,
+        pm10: raw.current?.air_quality?.pm10,
+        co: raw.current?.air_quality?.co,
+        no2: raw.current?.air_quality?.no2,
+        o3: raw.current?.air_quality?.o3,
         aqi_index: raw.current?.air_quality?.['us-epa-index'], // 1=Good … 6=Hazardous
         // Forecast + Astro additions
         hourly,
         forecast,
         sunrise: todayForecast?.astro?.sunrise || null,
-        sunset:  todayForecast?.astro?.sunset  || null,
+        sunset: todayForecast?.astro?.sunset || null,
         fetchedAt: new Date().toISOString(),
         cached: false
       };

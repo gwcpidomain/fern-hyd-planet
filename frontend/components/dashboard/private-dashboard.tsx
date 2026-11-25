@@ -570,24 +570,16 @@ export function PrivateDashboard() {
             const statusUpper = (incoming.currentStatus || incoming.status || '').toString().trim().toUpperCase();
             const hasFlow = (incoming.flowRate !== undefined && incoming.flowRate > 1.0) || (incoming.flow !== undefined && incoming.flow > 1.0);
 
+            // PHASE 1 FIX: Flow-Governed Active State
+            // Active pumping is strictly determined by flow or verified backend motor state (incorporating 45s grace period).
             let isIncomingMotorOn = false;
             if (!isZeroWater) {
                 if (hasFlow) {
                     isIncomingMotorOn = true;
                 } else if (hasExplicitMotorFlag) {
                     isIncomingMotorOn = explicitMotorOn;
-                } else if (hasExplicitStatus) {
-                    if (statusUpper === 'OFF' || statusUpper === 'STANDBY') {
-                        isIncomingMotorOn = false;
-                    } else if (['ON', 'RUNNING', 'NORMAL', 'HIGH', 'LOW', 'MID', 'CHARGING'].includes(statusUpper)) {
-                        isIncomingMotorOn = true;
-                    } else if (statusUpper === 'CRITICAL') {
-                        isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms >= 3.5);
-                    } else {
-                        isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms >= 3.5);
-                    }
                 } else {
-                    isIncomingMotorOn = (incomingIrms !== undefined && incomingIrms >= 3.5);
+                    isIncomingMotorOn = false;
                 }
             }
 
