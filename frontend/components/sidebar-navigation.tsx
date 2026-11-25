@@ -45,31 +45,36 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
     if (itemId === "dashboard" || itemId === "devices") onToggle()
   }
 
-  const handleDownloadCSV = async () => {
-    if (!token) return;
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleDownloadExcel = async () => {
+    if (!token || isExporting) return;
     try {
+      setIsExporting(true);
       const apiUrl = getApiBaseUrl();
-      const exportUrl = `${apiUrl}/api/export/csv`;
+      const exportUrl = `${apiUrl}/api/export/excel`;
 
       const res = await fetch(exportUrl, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) throw new Error("Excel export failed");
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `env_report_${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `report_${new Date().toISOString().split('T')[0]}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
     } catch (e) {
-      console.error("CSV Download failed:", e);
-      alert("Failed to download CSV. Ensure you are online.");
+      console.error("Excel Download failed:", e);
+      alert("Failed to download Excel report. Ensure you are online.");
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -138,17 +143,18 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
                 </li>
               )
             })}
-            {/* Download CSV Item */}
+            {/* Download Excel Report Item */}
             <li>
               <button
-                onClick={handleDownloadCSV}
-                className="group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-slate-400 hover:bg-white/5 hover:text-white transition-all duration-300"
+                onClick={handleDownloadExcel}
+                disabled={isExporting}
+                className="group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-slate-400 hover:bg-white/5 hover:text-white transition-all duration-300 disabled:opacity-50"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/5 text-slate-500 group-hover:bg-white/10 group-hover:text-white transition-all duration-300">
-                  <Download className="h-4 w-4" />
+                  <Download className={`h-4 w-4 ${isExporting ? "animate-bounce text-primary" : ""}`} />
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-medium">Download CSV</div>
+                  <div className="text-sm font-medium">{isExporting ? "Generating Excel..." : "Download Excel Report"}</div>
                 </div>
               </button>
             </li>
