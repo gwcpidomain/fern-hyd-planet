@@ -34,10 +34,10 @@ db.run("UPDATE borewell_state SET is_motor_on = 0, current = 0.0, motor_started_
 });
 
 // PHASE 2 MIGRATION: Ensure daily volume columns exist in borewell_state and readings_history
-db.run("ALTER TABLE borewell_state ADD COLUMN daily_liters REAL DEFAULT 0", () => {});
-db.run("ALTER TABLE borewell_state ADD COLUMN baseline_total_liters REAL DEFAULT 0", () => {});
-db.run("ALTER TABLE borewell_state ADD COLUMN daily_reset_date TEXT", () => {});
-db.run("ALTER TABLE readings_history ADD COLUMN daily_liters REAL DEFAULT 0", () => {});
+db.run("ALTER TABLE borewell_state ADD COLUMN daily_liters REAL DEFAULT 0", () => { });
+db.run("ALTER TABLE borewell_state ADD COLUMN baseline_total_liters REAL DEFAULT 0", () => { });
+db.run("ALTER TABLE borewell_state ADD COLUMN daily_reset_date TEXT", () => { });
+db.run("ALTER TABLE readings_history ADD COLUMN daily_liters REAL DEFAULT 0", () => { });
 
 // SECURITY FIX (H-08): Trust first proxy hop (Render's load balancer) for correct req.ip
 app.set('trust proxy', 1);
@@ -493,162 +493,162 @@ function handleWaterPush(tenantId, payload, res) {
         eff = 0.0;
       }
 
-          // 5. Derive Water Level (wl) - simulating drawdown and aquifer recharge
-          let wl = wlVal;
-          if (isZeroWaterPayload || wl === 0) {
-            wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
-          } else if (wl === null) {
-            let last_wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
-            if (is_motor_on === 1 && flow > 0) {
-              // Drawdown: Water level decreases as we pump it out
-              wl = Math.max(1.2, last_wl - 0.02 * (flow / 40.0));
-            } else {
-              // Recovery: Water level slowly rises back up to the aquifer static level (5.5m)
-              wl = Math.min(5.5, last_wl + 0.005);
+      // 5. Derive Water Level (wl) - simulating drawdown and aquifer recharge
+      let wl = wlVal;
+      if (isZeroWaterPayload || wl === 0) {
+        wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
+      } else if (wl === null) {
+        let last_wl = current_state.water_level !== undefined ? current_state.water_level : 5.5;
+        if (is_motor_on === 1 && flow > 0) {
+          // Drawdown: Water level decreases as we pump it out
+          wl = Math.max(1.2, last_wl - 0.02 * (flow / 40.0));
+        } else {
+          // Recovery: Water level slowly rises back up to the aquifer static level (5.5m)
+          wl = Math.min(5.5, last_wl + 0.005);
+        }
+      }
+      wl = parseFloat(Number(wl).toFixed(2));
+
+      // 6. Derive Run Time (rt)
+      let rt = payload.rt !== undefined ? safeFloat(payload.rt) : null;
+      if (rt === null) {
+        let last_rt = current_state.run_time_total !== undefined ? current_state.run_time_total : 0.0;
+        if (is_motor_on === 1) {
+          let deltaHours = 1.0 / 3600.0;
+          if (current_state.last_updated) {
+            const lastTime = new Date(current_state.last_updated + " UTC").getTime();
+            const deltaMs = Date.now() - lastTime;
+            if (deltaMs > 0 && deltaMs < 300000) {
+              deltaHours = deltaMs / (1000.0 * 3600.0);
             }
           }
-          wl = parseFloat(Number(wl).toFixed(2));
+          rt = last_rt + deltaHours;
+        } else {
+          rt = last_rt;
+        }
+      }
+      rt = parseFloat(Number(rt).toFixed(3));
 
-          // 6. Derive Run Time (rt)
-          let rt = payload.rt !== undefined ? safeFloat(payload.rt) : null;
-          if (rt === null) {
-            let last_rt = current_state.run_time_total !== undefined ? current_state.run_time_total : 0.0;
-            if (is_motor_on === 1) {
-              let deltaHours = 1.0 / 3600.0;
-              if (current_state.last_updated) {
-                const lastTime = new Date(current_state.last_updated + " UTC").getTime();
-                const deltaMs = Date.now() - lastTime;
-                if (deltaMs > 0 && deltaMs < 300000) {
-                  deltaHours = deltaMs / (1000.0 * 3600.0);
-                }
-              }
-              rt = last_rt + deltaHours;
-            } else {
-              rt = last_rt;
+      // Preserve last values on zero packet
+      const ph = isZeroWaterPayload ? (current_state.ph !== undefined ? current_state.ph : 7.2) : (phVal !== null ? phVal : (current_state.ph !== undefined ? current_state.ph : 7.2));
+      const tds = isZeroWaterPayload ? (current_state.tds !== undefined ? current_state.tds : 250.0) : (tdsVal !== null ? tdsVal : (current_state.tds !== undefined ? current_state.tds : 250.0));
+      const turbidity = isZeroWaterPayload ? (current_state.turbidity !== undefined ? current_state.turbidity : 1.2) : (turbVal !== null ? turbVal : (current_state.turbidity !== undefined ? current_state.turbidity : 1.2));
+
+      const rawTotalLiters = payload.total_liters !== undefined ? payload.total_liters : null;
+      let total_liters = safeFloat(rawTotalLiters, null);
+      if (total_liters === null) {
+        let last_liters = current_state.total_liters !== undefined ? current_state.total_liters : 0.0;
+        if (is_motor_on === 1 && effectiveFlow > 0) {
+          let deltaSec = 3.0; // default packet interval
+          if (current_state.last_updated) {
+            const lastTime = new Date(current_state.last_updated + " UTC").getTime();
+            const deltaMs = Date.now() - lastTime;
+            if (deltaMs > 0 && deltaMs < 60000) {
+              deltaSec = deltaMs / 1000.0;
             }
           }
-          rt = parseFloat(Number(rt).toFixed(3));
+          const addedLiters = (effectiveFlow / 60.0) * deltaSec;
+          total_liters = last_liters + addedLiters;
+        } else {
+          total_liters = last_liters;
+        }
+      }
+      total_liters = parseFloat(Number(total_liters).toFixed(1));
 
-          // Preserve last values on zero packet
-          const ph = isZeroWaterPayload ? (current_state.ph !== undefined ? current_state.ph : 7.2) : (phVal !== null ? phVal : (current_state.ph !== undefined ? current_state.ph : 7.2));
-          const tds = isZeroWaterPayload ? (current_state.tds !== undefined ? current_state.tds : 250.0) : (tdsVal !== null ? tdsVal : (current_state.tds !== undefined ? current_state.tds : 250.0));
-          const turbidity = isZeroWaterPayload ? (current_state.turbidity !== undefined ? current_state.turbidity : 1.2) : (turbVal !== null ? turbVal : (current_state.turbidity !== undefined ? current_state.turbidity : 1.2));
+      // PHASE 2 FIX: 24-Hour Midnight (00:00 IST) Daily Volume Reset
+      // Tracks volume extracted today (Asia/Kolkata), resetting to 0.0 at midnight while preserving lifetime total
+      const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
-          const rawTotalLiters = payload.total_liters !== undefined ? payload.total_liters : null;
-          let total_liters = safeFloat(rawTotalLiters, null);
-          if (total_liters === null) {
-            let last_liters = current_state.total_liters !== undefined ? current_state.total_liters : 0.0;
-            if (is_motor_on === 1 && effectiveFlow > 0) {
-              let deltaSec = 3.0; // default packet interval
-              if (current_state.last_updated) {
-                const lastTime = new Date(current_state.last_updated + " UTC").getTime();
-                const deltaMs = Date.now() - lastTime;
-                if (deltaMs > 0 && deltaMs < 60000) {
-                  deltaSec = deltaMs / 1000.0;
-                }
-              }
-              const addedLiters = (effectiveFlow / 60.0) * deltaSec;
-              total_liters = last_liters + addedLiters;
-            } else {
-              total_liters = last_liters;
-            }
-          }
-          total_liters = parseFloat(Number(total_liters).toFixed(1));
+      let daily_reset_date = current_state.daily_reset_date || null;
+      let baseline_total_liters = (current_state.baseline_total_liters !== undefined && current_state.baseline_total_liters !== null)
+        ? current_state.baseline_total_liters
+        : total_liters;
 
-          // PHASE 2 FIX: 24-Hour Midnight (00:00 IST) Daily Volume Reset
-          // Tracks volume extracted today (Asia/Kolkata), resetting to 0.0 at midnight while preserving lifetime total
-          const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+      if (daily_reset_date !== todayIST) {
+        // Midnight date rollover: capture current lifetime total as start-of-day baseline
+        baseline_total_liters = total_liters;
+        daily_reset_date = todayIST;
+      }
 
-          let daily_reset_date = current_state.daily_reset_date || null;
-          let baseline_total_liters = (current_state.baseline_total_liters !== undefined && current_state.baseline_total_liters !== null)
-            ? current_state.baseline_total_liters
-            : total_liters;
+      let daily_liters = Math.max(0.0, total_liters - baseline_total_liters);
+      daily_liters = parseFloat(Number(daily_liters).toFixed(1));
 
-          if (daily_reset_date !== todayIST) {
-            // Midnight date rollover: capture current lifetime total as start-of-day baseline
-            baseline_total_liters = total_liters;
-            daily_reset_date = todayIST;
-          }
+      const water_status = isZeroWaterPayload ? (current_state.water_status || 'PROBE DRY') : (payload.water_status !== undefined ? payload.water_status : (current_state.water_status !== undefined ? current_state.water_status : 'NORMAL'));
+      const turbidity_status = isZeroWaterPayload ? (current_state.turbidity_status || 'CLEAR') : (payload.turbidity_status !== undefined ? payload.turbidity_status : (current_state.turbidity_status !== undefined ? current_state.turbidity_status : 'CLEAR'));
+      const tds_status = isZeroWaterPayload ? (current_state.tds_status || 'GOOD') : (payload.tds_status !== undefined ? payload.tds_status : (current_state.tds_status !== undefined ? current_state.tds_status : 'GOOD'));
 
-          let daily_liters = Math.max(0.0, total_liters - baseline_total_liters);
-          daily_liters = parseFloat(Number(daily_liters).toFixed(1));
+      // 7. Track motor_started_at for session duration
+      let motor_started_at = current_state.motor_started_at || null;
+      if (is_motor_on === 1) {
+        if (!current_state.is_motor_on || !motor_started_at) {
+          motor_started_at = new Date().toISOString();
+        }
+      } else {
+        motor_started_at = null;
+      }
 
-          const water_status = isZeroWaterPayload ? (current_state.water_status || 'PROBE DRY') : (payload.water_status !== undefined ? payload.water_status : (current_state.water_status !== undefined ? current_state.water_status : 'NORMAL'));
-          const turbidity_status = isZeroWaterPayload ? (current_state.turbidity_status || 'CLEAR') : (payload.turbidity_status !== undefined ? payload.turbidity_status : (current_state.turbidity_status !== undefined ? current_state.turbidity_status : 'CLEAR'));
-          const tds_status = isZeroWaterPayload ? (current_state.tds_status || 'GOOD') : (payload.tds_status !== undefined ? payload.tds_status : (current_state.tds_status !== undefined ? current_state.tds_status : 'GOOD'));
-
-          // 7. Track motor_started_at for session duration
-          let motor_started_at = current_state.motor_started_at || null;
-          if (is_motor_on === 1) {
-            if (!current_state.is_motor_on || !motor_started_at) {
-              motor_started_at = new Date().toISOString();
-            }
-          } else {
-            motor_started_at = null;
-          }
-
-          // Perform database UPDATE of live state — scoped to tenant
-          db.run(`UPDATE borewell_state SET 
+      // Perform database UPDATE of live state — scoped to tenant
+      db.run(`UPDATE borewell_state SET 
       flow_rate = ?, efficiency = ?, voltage = ?, current = ?, run_time_total = ?, water_level = ?, 
       ph = ?, tds = ?, turbidity = ?, is_motor_on = ?, total_liters = ?, daily_liters = ?, 
       baseline_total_liters = ?, daily_reset_date = ?, current_status = ?, water_status = ?, 
       turbidity_status = ?, tds_status = ?, motor_started_at = ?, last_updated = CURRENT_TIMESTAMP 
       WHERE id = ? AND tenant_id = ?`,
-            [effectiveFlow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, daily_liters, baseline_total_liters, daily_reset_date, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
-            function (updateErr) {
-              if (updateErr) {
-                console.error("DB Update Error during ingestion:", updateErr.message);
-                return res.status(500).json({ error: "Failed to update borewell state." });
-              }
+        [effectiveFlow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, daily_liters, baseline_total_liters, daily_reset_date, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
+        function (updateErr) {
+          if (updateErr) {
+            console.error("DB Update Error during ingestion:", updateErr.message);
+            return res.status(500).json({ error: "Failed to update borewell state." });
+          }
 
-              // AUDIT FIX (Finding 3.1 — Critical): INSERT reading into history on every ingest, not just 5-min intervals
-              db.run(`INSERT INTO readings_history 
+          // AUDIT FIX (Finding 3.1 — Critical): INSERT reading into history on every ingest, not just 5-min intervals
+          db.run(`INSERT INTO readings_history 
           (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, daily_liters, current_status, water_status, turbidity_status, tds_status) 
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [id, tenantId, effectiveFlow, wl, eff, v, a, ph, tds, turbidity, total_liters, daily_liters, current_status, water_status, turbidity_status, tds_status],
-                function (insertErr) {
-                  if (insertErr) {
-                    console.error("DB History insertion error during ingestion:", insertErr.message);
-                    // Non-fatal to client response, but logged.
-                  }
+            [id, tenantId, effectiveFlow, wl, eff, v, a, ph, tds, turbidity, total_liters, daily_liters, current_status, water_status, turbidity_status, tds_status],
+            function (insertErr) {
+              if (insertErr) {
+                console.error("DB History insertion error during ingestion:", insertErr.message);
+                // Non-fatal to client response, but logged.
+              }
 
-                  console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${effectiveFlow} LPM, TodayVol=${daily_liters} L, TotalVol=${total_liters} L, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
+              console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${effectiveFlow} LPM, TodayVol=${daily_liters} L, TotalVol=${total_liters} L, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
 
-                  // Broadcast to Frontend
-                  broadcast({
-                    type: 'water',
-                    id: id,
-                    tenant_id: tenantId,
-                    timestamp: new Date().toISOString(),
-                    isMotorOn: is_motor_on === 1,
-                    motorStartedAt: motor_started_at,
-                    data: {
-                      flowRate: effectiveFlow,
-                      efficiency: eff,
-                      voltage: v,
-                      current: a,
-                      runTime: rt,
-                      motorStartedAt: motor_started_at,
-                      waterLevel: wl,
-                      ph: ph,
-                      tds: tds,
-                      turbidity: turbidity,
-                      totalLiters: total_liters,
-                      dailyLiters: daily_liters,
-                      currentStatus: current_status,
-                      waterStatus: water_status,
-                      turbidityStatus: turbidity_status,
-                      tdsStatus: tds_status
-                    }
-                  });
-
-                  // AUDIT FIX (Finding 2.2 — Critical): Send response inside the db run callback block only
-                  res.json({ status: 'Success', id });
+              // Broadcast to Frontend
+              broadcast({
+                type: 'water',
+                id: id,
+                tenant_id: tenantId,
+                timestamp: new Date().toISOString(),
+                isMotorOn: is_motor_on === 1,
+                motorStartedAt: motor_started_at,
+                data: {
+                  flowRate: effectiveFlow,
+                  efficiency: eff,
+                  voltage: v,
+                  current: a,
+                  runTime: rt,
+                  motorStartedAt: motor_started_at,
+                  waterLevel: wl,
+                  ph: ph,
+                  tds: tds,
+                  turbidity: turbidity,
+                  totalLiters: total_liters,
+                  dailyLiters: daily_liters,
+                  currentStatus: current_status,
+                  waterStatus: water_status,
+                  turbidityStatus: turbidity_status,
+                  tdsStatus: tds_status
                 }
-              );
+              });
+
+              // AUDIT FIX (Finding 2.2 — Critical): Send response inside the db run callback block only
+              res.json({ status: 'Success', id });
             }
           );
-        });
+        }
+      );
+    });
   });
 }
 
@@ -1008,14 +1008,6 @@ app.get('/api/auth/me', (req, res) => {
   }
 });
 
-// 5. Get Tenant Branding Configuration (Authenticated)
-app.get('/api/tenant/config', requireDashboardAuth, (req, res) => {
-  db.get("SELECT * FROM tenants WHERE id = ?", [req.tenantId], (err, row) => {
-    if (err || !row) return res.status(404).json({ error: "Tenant config not found." });
-    res.json(row);
-  });
-});
-
 // 5b. Get Public Tenant Branding Configuration (Unauthenticated - for login/signup screens)
 app.get('/api/tenant/config/public', (req, res) => {
   const tenantId = getTenantFromRequest(req);
@@ -1224,7 +1216,7 @@ app.get('/api/weather', requireDashboardAuth, async (req, res) => {
 
 // 6. Devices Listing — dynamic status from DB timestamps, scoped to tenant
 app.get('/api/devices', requireDashboardAuth, (req, res) => {
-  const ONLINE_THRESHOLD_MS = 30000; // 30 seconds
+  const ONLINE_THRESHOLD_MS = 90000; // 90 seconds (AQI node polls Tuya every 60s; 90s prevents flapping)
   const tenantLocId = req.tenantId.toUpperCase() + '-01';
 
   // Query latest water update and latest AQI entry for this tenant
