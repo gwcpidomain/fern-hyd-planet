@@ -183,6 +183,9 @@ async function initSchema(client) {
       tds              REAL    DEFAULT 250,
       turbidity        REAL    DEFAULT 1.2,
       total_liters     REAL    DEFAULT 0,
+      daily_liters     REAL    DEFAULT 0,
+      baseline_total_liters REAL DEFAULT 0,
+      daily_reset_date TEXT,
       current_status   TEXT,
       water_status     TEXT,
       turbidity_status TEXT,
@@ -242,6 +245,12 @@ async function initSchema(client) {
   } catch (e) {
     // Column already exists, ignore
   }
+
+  // PHASE 2 MIGRATION: 24-hour midnight daily volume accounting on Turso
+  try { await client.execute("ALTER TABLE borewell_state ADD COLUMN daily_liters REAL DEFAULT 0"); } catch (e) {}
+  try { await client.execute("ALTER TABLE borewell_state ADD COLUMN baseline_total_liters REAL DEFAULT 0"); } catch (e) {}
+  try { await client.execute("ALTER TABLE borewell_state ADD COLUMN daily_reset_date TEXT"); } catch (e) {}
+  try { await client.execute("ALTER TABLE readings_history ADD COLUMN daily_liters REAL DEFAULT 0"); } catch (e) {}
 
   // Step 2: Seed default tenants
   const tenantRow = await client.execute('SELECT COUNT(*) as cnt FROM tenants');

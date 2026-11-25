@@ -84,6 +84,9 @@ function initTables() {
       tds REAL DEFAULT 250,
       turbidity REAL DEFAULT 1.2,
       total_liters REAL DEFAULT 0,
+      daily_liters REAL DEFAULT 0,
+      baseline_total_liters REAL DEFAULT 0,
+      daily_reset_date TEXT,
       current_status TEXT,
       water_status TEXT,
       turbidity_status TEXT,
@@ -152,6 +155,12 @@ function initTables() {
 
     // Migration: add motor_started_at for session duration tracking
     db.run(`ALTER TABLE borewell_state ADD COLUMN motor_started_at DATETIME`, () => { /* Silently ignore if already exists */ });
+
+    // PHASE 2 MIGRATION: 24-hour midnight daily volume accounting
+    db.run(`ALTER TABLE borewell_state ADD COLUMN daily_liters REAL DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE borewell_state ADD COLUMN baseline_total_liters REAL DEFAULT 0`, () => {});
+    db.run(`ALTER TABLE borewell_state ADD COLUMN daily_reset_date TEXT`, () => {});
+    db.run(`ALTER TABLE readings_history ADD COLUMN daily_liters REAL DEFAULT 0`, () => {});
 
     // Migration: add per-site password hash to existing tenants tables
     db.run(`ALTER TABLE tenants ADD COLUMN site_password_hash TEXT`, () => { /* Silently ignore if already exists */ });

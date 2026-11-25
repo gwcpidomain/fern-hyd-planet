@@ -41,6 +41,7 @@ type WaterState = {
     flow?: number; flowRate?: number; efficiency?: number; voltage?: number; runTime?: number; turbidity?: number;
     motorStartedAt?: string | null;
     totalLiters?: number;
+    dailyLiters?: number;
     currentStatus?: string;
     waterStatus?: string;
     turbidityStatus?: string;
@@ -464,6 +465,7 @@ export function PrivateDashboard() {
                                 turbidity: isDbZero ? (prev?.turbidity ?? 1.2) : (active.turbidity || prev?.turbidity || 1.2),
                                 pump_status: isMotorActive ? (active.current_status || "MID") : "OFF",
                                 totalLiters: active.total_liters ?? prev?.totalLiters,
+                                dailyLiters: active.daily_liters ?? prev?.dailyLiters,
                                 currentStatus: isMotorActive ? (active.current_status || "ON") : "OFF",
                                 waterStatus: active.water_status,
                                 turbidityStatus: active.turbidity_status,
@@ -680,6 +682,7 @@ export function PrivateDashboard() {
                     turbidity: incoming.turbidity ?? (prev?.turbidity ?? 1.2),
                     pump_status: isIncomingMotorOn ? (incoming.currentStatus ?? (hasPumpData ? (derivedStatus ?? 'N/A') : (prev?.pump_status ?? 'N/A'))) : 'OFF',
                     totalLiters: incoming.totalLiters ?? prev?.totalLiters,
+                    dailyLiters: incoming.dailyLiters ?? prev?.dailyLiters,
                     currentStatus: isIncomingMotorOn ? (incoming.currentStatus ?? prev?.currentStatus) : 'OFF',
                     waterStatus: incoming.waterStatus ?? prev?.waterStatus,
                     turbidityStatus: incoming.turbidityStatus ?? prev?.turbidityStatus,
@@ -1097,6 +1100,7 @@ export function PrivateDashboard() {
             motorStartedAt: motorRunning ? (waterData?.motorStartedAt || null) : null,
             turbidity: Number(waterData?.turbidity ?? 1.2),
             totalLiters: (waterData?.totalLiters !== undefined && waterData?.totalLiters !== null) ? Number(waterData.totalLiters) : undefined,
+            dailyLiters: (waterData?.dailyLiters !== undefined && waterData?.dailyLiters !== null) ? Number(waterData.dailyLiters) : undefined,
             currentStatus: motorRunning ? (waterData?.currentStatus || 'ON') : 'OFF',
             waterStatus: waterData?.waterStatus,
             turbidityStatus: waterData?.turbidityStatus,

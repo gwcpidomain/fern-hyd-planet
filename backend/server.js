@@ -33,6 +33,12 @@ db.run("UPDATE borewell_state SET is_motor_on = 0, current = 0.0, motor_started_
   if (!err) console.log("🔄 Verified initial borewell standby states");
 });
 
+// PHASE 2 MIGRATION: Ensure daily volume columns exist in borewell_state and readings_history
+db.run("ALTER TABLE borewell_state ADD COLUMN daily_liters REAL DEFAULT 0", () => {});
+db.run("ALTER TABLE borewell_state ADD COLUMN baseline_total_liters REAL DEFAULT 0", () => {});
+db.run("ALTER TABLE borewell_state ADD COLUMN daily_reset_date TEXT", () => {});
+db.run("ALTER TABLE readings_history ADD COLUMN daily_liters REAL DEFAULT 0", () => {});
+
 // SECURITY FIX (H-08): Trust first proxy hop (Render's load balancer) for correct req.ip
 app.set('trust proxy', 1);
 
@@ -529,7 +535,43 @@ function handleWaterPush(tenantId, payload, res) {
           const turbidity = isZeroWaterPayload ? (current_state.turbidity !== undefined ? current_state.turbidity : 1.2) : (turbVal !== null ? turbVal : (current_state.turbidity !== undefined ? current_state.turbidity : 1.2));
 
           const rawTotalLiters = payload.total_liters !== undefined ? payload.total_liters : null;
-          const total_liters = safeFloat(rawTotalLiters, current_state.total_liters !== undefined ? current_state.total_liters : 0.0);
+          let total_liters = safeFloat(rawTotalLiters, null);
+          if (total_liters === null) {
+            let last_liters = current_state.total_liters !== undefined ? current_state.total_liters : 0.0;
+            if (is_motor_on === 1 && effectiveFlow > 0) {
+              let deltaSec = 3.0; // default packet interval
+              if (current_state.last_updated) {
+                const lastTime = new Date(current_state.last_updated + " UTC").getTime();
+                const deltaMs = Date.now() - lastTime;
+                if (deltaMs > 0 && deltaMs < 60000) {
+                  deltaSec = deltaMs / 1000.0;
+                }
+              }
+              const addedLiters = (effectiveFlow / 60.0) * deltaSec;
+              total_liters = last_liters + addedLiters;
+            } else {
+              total_liters = last_liters;
+            }
+          }
+          total_liters = parseFloat(Number(total_liters).toFixed(1));
+
+          // PHASE 2 FIX: 24-Hour Midnight (00:00 IST) Daily Volume Reset
+          // Tracks volume extracted today (Asia/Kolkata), resetting to 0.0 at midnight while preserving lifetime total
+          const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
+          let daily_reset_date = current_state.daily_reset_date || null;
+          let baseline_total_liters = (current_state.baseline_total_liters !== undefined && current_state.baseline_total_liters !== null)
+            ? current_state.baseline_total_liters
+            : total_liters;
+
+          if (daily_reset_date !== todayIST) {
+            // Midnight date rollover: capture current lifetime total as start-of-day baseline
+            baseline_total_liters = total_liters;
+            daily_reset_date = todayIST;
+          }
+
+          let daily_liters = Math.max(0.0, total_liters - baseline_total_liters);
+          daily_liters = parseFloat(Number(daily_liters).toFixed(1));
 
           const water_status = isZeroWaterPayload ? (current_state.water_status || 'PROBE DRY') : (payload.water_status !== undefined ? payload.water_status : (current_state.water_status !== undefined ? current_state.water_status : 'NORMAL'));
           const turbidity_status = isZeroWaterPayload ? (current_state.turbidity_status || 'CLEAR') : (payload.turbidity_status !== undefined ? payload.turbidity_status : (current_state.turbidity_status !== undefined ? current_state.turbidity_status : 'CLEAR'));
@@ -548,10 +590,11 @@ function handleWaterPush(tenantId, payload, res) {
           // Perform database UPDATE of live state — scoped to tenant
           db.run(`UPDATE borewell_state SET 
       flow_rate = ?, efficiency = ?, voltage = ?, current = ?, run_time_total = ?, water_level = ?, 
-      ph = ?, tds = ?, turbidity = ?, is_motor_on = ?, total_liters = ?, current_status = ?, 
-      water_status = ?, turbidity_status = ?, tds_status = ?, motor_started_at = ?, last_updated = CURRENT_TIMESTAMP 
+      ph = ?, tds = ?, turbidity = ?, is_motor_on = ?, total_liters = ?, daily_liters = ?, 
+      baseline_total_liters = ?, daily_reset_date = ?, current_status = ?, water_status = ?, 
+      turbidity_status = ?, tds_status = ?, motor_started_at = ?, last_updated = CURRENT_TIMESTAMP 
       WHERE id = ? AND tenant_id = ?`,
-            [effectiveFlow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
+            [effectiveFlow, eff, v, a, rt, wl, ph, tds, turbidity, is_motor_on, total_liters, daily_liters, baseline_total_liters, daily_reset_date, current_status, water_status, turbidity_status, tds_status, motor_started_at, id, tenantId],
             function (updateErr) {
               if (updateErr) {
                 console.error("DB Update Error during ingestion:", updateErr.message);
@@ -560,16 +603,16 @@ function handleWaterPush(tenantId, payload, res) {
 
               // AUDIT FIX (Finding 3.1 — Critical): INSERT reading into history on every ingest, not just 5-min intervals
               db.run(`INSERT INTO readings_history 
-          (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [id, tenantId, effectiveFlow, wl, eff, v, a, ph, tds, turbidity, total_liters, current_status, water_status, turbidity_status, tds_status],
+          (borewell_id, tenant_id, flow_rate, water_level, efficiency, voltage, current, ph, tds, turbidity, total_liters, daily_liters, current_status, water_status, turbidity_status, tds_status) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [id, tenantId, effectiveFlow, wl, eff, v, a, ph, tds, turbidity, total_liters, daily_liters, current_status, water_status, turbidity_status, tds_status],
                 function (insertErr) {
                   if (insertErr) {
                     console.error("DB History insertion error during ingestion:", insertErr.message);
                     // Non-fatal to client response, but logged.
                   }
 
-                  console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${effectiveFlow} LPM, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
+                  console.log(`💧 Water Data Ingested [tenant=${tenantId}]: ID=${id}, Flow=${effectiveFlow} LPM, TodayVol=${daily_liters} L, TotalVol=${total_liters} L, TDS=${tds} ppm (${tds_status}), pH=${ph} (${water_status}), Turbidity=${turbidity} NTU (${turbidity_status}), Amps=${a} (${current_status}), MotorOn=${is_motor_on === 1}`);
 
                   // Broadcast to Frontend
                   broadcast({
@@ -591,6 +634,7 @@ function handleWaterPush(tenantId, payload, res) {
                       tds: tds,
                       turbidity: turbidity,
                       totalLiters: total_liters,
+                      dailyLiters: daily_liters,
                       currentStatus: current_status,
                       waterStatus: water_status,
                       turbidityStatus: turbidity_status,

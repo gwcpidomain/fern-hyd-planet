@@ -17,6 +17,7 @@ interface WaterDonutChartProps {
         flow?: number
         flowRate?: number
         totalLiters?: number
+        dailyLiters?: number
         liters?: string | number
         turbidity?: number
     }
@@ -39,9 +40,12 @@ export const WaterDonutChart = memo(function WaterDonutChart({ waterData, transp
             { name: "Loading...", value: 1, chartValue: 25, rawValue: 0, unit: "", color: "#334155" }
         ];
 
-        const volumeValue = waterData.totalLiters !== undefined 
-            ? waterData.totalLiters 
-            : (waterData.liters !== undefined ? Number(waterData.liters) : 0.0);
+        // PHASE 2 FIX: Prioritize dailyLiters (today's volume resetting at 00:00 IST) over lifetime total
+        const volumeValue = waterData.dailyLiters !== undefined 
+            ? waterData.dailyLiters 
+            : (waterData.totalLiters !== undefined 
+                ? waterData.totalLiters 
+                : (waterData.liters !== undefined ? Number(waterData.liters) : 0.0));
             
         const turbidityValue = waterData.turbidity !== undefined ? waterData.turbidity : 0.0;
         const tdsValue = waterData.tds !== undefined ? waterData.tds : 0.0;
@@ -53,7 +57,7 @@ export const WaterDonutChart = memo(function WaterDonutChart({ waterData, transp
                 value: Math.min(100, (volumeValue / 2000) * 100), // Scale target of 2000 L
                 chartValue: 25,
                 rawValue: volumeValue, 
-                unit: "L", 
+                unit: "L · TODAY", 
                 color: "#34d399" 
             },
             {
