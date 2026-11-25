@@ -15,6 +15,7 @@ interface SidebarNavigationProps {
 
 export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: SidebarNavigationProps) {
   const [mounted, setMounted] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const router = useRouter();
   const { user, logout, token } = useAuth();
 
@@ -44,8 +45,6 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
     onNavigate(itemId)
     if (itemId === "dashboard" || itemId === "devices") onToggle()
   }
-
-  const [isExporting, setIsExporting] = useState(false);
 
   const handleDownloadExcel = async () => {
     if (!token || isExporting) return;

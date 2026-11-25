@@ -153,7 +153,8 @@ app.get('/api/borewells', requireDashboardAuth, (req, res) => {
 // 2. Get Historical Data (For Trend Graphs) — scoped to active tenant
 app.get('/api/history/:id', requireDashboardAuth, (req, res) => {
   const { id } = req.params;
-  const limit = parseInt(req.query.limit, 10) || 50; // Last 50 points
+  const requestedLimit = parseInt(req.query.limit, 10) || 50;
+  const limit = Math.max(1, Math.min(requestedLimit, 1000)); // Cap between 1 and 1,000 points
 
   // DYNAMIC WHITELIST FIX: Verify borewell exists for active tenant in DB instead of static array
   db.get("SELECT id FROM borewell_state WHERE id = ? AND tenant_id = ?", [id, req.tenantId], (checkErr, validBorewell) => {
@@ -171,7 +172,8 @@ app.get('/api/history/:id', requireDashboardAuth, (req, res) => {
 
 // AQI history — scoped to active tenant
 app.get('/api/aqi/history', requireDashboardAuth, (req, res) => {
-  const limit = parseInt(req.query.limit, 10) || 100;
+  const requestedLimit = parseInt(req.query.limit, 10) || 100;
+  const limit = Math.max(1, Math.min(requestedLimit, 1000)); // Cap between 1 and 1,000 points
   db.all('SELECT * FROM aqi_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, limit], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(rows.reverse());
@@ -1444,7 +1446,7 @@ wss.on('connection', (ws, req) => {
   const DASHBOARD_TOKEN = process.env.DASHBOARD_TOKEN || null;
   const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
 
-  const handleAuthResult = (isAuthorized) => {
+  const handleAuthResult = (isAuthorized, tenantId = null) => {
     if (!isAuthorized) {
       console.warn(`🚫 WebSocket connection rejected: Invalid or missing token from ${clientIp}`);
       // Send message to client before closing to make debugging easier
@@ -1453,7 +1455,8 @@ wss.on('connection', (ws, req) => {
       return;
     }
 
-    console.log('📱 Dashboard App Connected via WebSocket');
+    ws.tenantId = tenantId;
+    console.log(`📱 Dashboard App Connected via WebSocket${tenantId ? ` [tenant=${tenantId}]` : ''}`);
     clients.add(ws);
 
     // Small heartbeat to keep connection alive
@@ -1480,7 +1483,7 @@ wss.on('connection', (ws, req) => {
 
   // 1. Direct environment variable token match
   if (DASHBOARD_TOKEN && token === DASHBOARD_TOKEN) {
-    handleAuthResult(true);
+    handleAuthResult(true, urlParams.get('tenant') || null);
     return;
   }
 
@@ -1488,8 +1491,9 @@ wss.on('connection', (ws, req) => {
   if (token) {
     const session = verifyToken(token);
     if (session) {
-      db.get('SELECT id FROM users WHERE id = ?', [session.userId], (err, user) => {
-        handleAuthResult(!err && !!user);
+      db.get('SELECT id, tenant_id FROM users WHERE id = ?', [session.userId], (err, user) => {
+        const resolvedTenant = user?.tenant_id || session.tenantId || urlParams.get('tenant') || null;
+        handleAuthResult(!err && !!user, resolvedTenant);
       });
       return;
     }
@@ -1500,7 +1504,7 @@ wss.on('connection', (ws, req) => {
       const email = decoded[0];
       const password = decoded[1];
       if (email && password) {
-        db.get('SELECT password FROM users WHERE email = ?', [email], (err, user) => {
+        db.get('SELECT password, tenant_id FROM users WHERE email = ?', [email], (err, user) => {
           if (err || !user) {
             handleAuthResult(false);
             return;
@@ -1517,7 +1521,7 @@ wss.on('connection', (ws, req) => {
             passwordMatched = storedPassword.length === password.length &&
               crypto.timingSafeEqual(Buffer.from(storedPassword), Buffer.from(password));
           }
-          handleAuthResult(passwordMatched);
+          handleAuthResult(passwordMatched, user.tenant_id || urlParams.get('tenant') || null);
         });
         return;
       }
@@ -1530,14 +1534,19 @@ wss.on('connection', (ws, req) => {
   if (DASHBOARD_TOKEN) {
     handleAuthResult(false);
   } else {
-    handleAuthResult(true);
+    handleAuthResult(true, urlParams.get('tenant') || null);
   }
 });
 
 function broadcast(data) {
+  const targetTenant = data.tenant_id;
   const message = JSON.stringify(data);
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
+      // MULTI-TENANT PRIVACY: If client belongs to a specific tenant and data has a tenant_id, only deliver if matching
+      if (client.tenantId && targetTenant && client.tenantId !== targetTenant) {
+        return;
+      }
       client.send(message);
     }
   });
