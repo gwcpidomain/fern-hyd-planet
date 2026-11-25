@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth-provider";
 import { getApiBaseUrl } from "@/lib/api-url";
+import { getTenantHeaders } from "@/lib/tenant";
 import { LayoutDashboard, X, LogOut, Cpu, Download } from "lucide-react"
 
 interface SidebarNavigationProps {
@@ -51,13 +52,23 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
     try {
       setIsExporting(true);
       const apiUrl = getApiBaseUrl();
-      const exportUrl = `${apiUrl}/api/export/excel`;
+      const exportUrl = `${apiUrl}/api/export/excel?limit=1000`;
 
       const res = await fetch(exportUrl, {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          ...getTenantHeaders(),
+        }
       });
 
-      if (!res.ok) throw new Error("Excel export failed");
+      if (!res.ok) {
+        let errorDetail = "Failed to download Excel report.";
+        try {
+          const errData = await res.json();
+          if (errData?.error) errorDetail = errData.error;
+        } catch (_) {}
+        throw new Error(errorDetail);
+      }
 
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -69,9 +80,9 @@ export function SidebarNavigation({ isOpen, onToggle, activeView, onNavigate }: 
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-    } catch (e) {
+    } catch (e: any) {
       console.error("Excel Download failed:", e);
-      alert("Failed to download Excel report. Ensure you are online.");
+      alert(e.message || "Failed to download Excel report. Ensure you are online.");
     } finally {
       setIsExporting(false);
     }

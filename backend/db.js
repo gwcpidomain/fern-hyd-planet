@@ -168,6 +168,8 @@ function initTables() {
     // Time-series Indexes
     db.run(`CREATE INDEX IF NOT EXISTS idx_readings_tenant_borewell_time 
       ON readings_history(tenant_id, borewell_id, timestamp DESC)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_readings_tenant_time 
+      ON readings_history(tenant_id, timestamp DESC)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_aqi_tenant_time 
       ON aqi_history(tenant_id, timestamp DESC)`);
 

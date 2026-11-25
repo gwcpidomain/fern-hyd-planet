@@ -224,158 +224,183 @@ function getAqiCategory(aqi) {
 
 // Excel Export Endpoint - 2 Dedicated Sheets (Water & Borewell, Air Quality) in IST — scoped to active tenant
 app.get('/api/export/excel', requireDashboardAuth, async (req, res) => {
-  const exportLimit = parseInt(req.query.limit, 10) || 10000;
-  const safeLimit = Math.min(exportLimit, 50000);
+  const exportLimit = parseInt(req.query.limit, 10) || 1000;
+  const safeLimit = Math.min(exportLimit, 2500);
 
-  db.all('SELECT * FROM readings_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, safeLimit], (err, waterRows) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    db.all('SELECT * FROM aqi_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, safeLimit], async (err2, aqiRows) => {
-      if (err2) return res.status(500).json({ error: err2.message });
-
-      try {
-        const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'Planet Insights';
-        workbook.created = new Date();
-
-        // 1. Water & Borewell Sheet (Direct table starting at Row 1, Row 1 pinned)
-        const waterSheet = workbook.addWorksheet('Water & Borewell', {
-          views: [{ state: 'frozen', ySplit: 1 }]
-        });
-
-        waterSheet.columns = [
-          { header: 'Date', key: 'date', width: 14 },
-          { header: 'Time (IST)', key: 'time', width: 16 },
-          { header: 'Source ID', key: 'id', width: 14 },
-          { header: 'Pump Status', key: 'pump_status', width: 16 },
-          { header: 'Flow Rate (L/min)', key: 'flow_rate', width: 18 },
-          { header: "Today's Volume (Liters)", key: 'daily_liters', width: 24 },
-          { header: 'Total Volume (Liters)', key: 'total_liters', width: 22 },
-          { header: 'Current (A)', key: 'current', width: 14 },
-          { header: 'Voltage (V)', key: 'voltage', width: 14 },
-          { header: 'Efficiency (%)', key: 'efficiency', width: 15 },
-          { header: 'Water Level (m)', key: 'water_level', width: 16 },
-          { header: 'pH', key: 'ph', width: 12 },
-          { header: 'TDS (ppm)', key: 'tds', width: 14 },
-          { header: 'Water Quality Status', key: 'water_status', width: 22 },
-          { header: 'Turbidity (NTU)', key: 'turbidity', width: 16 }
-        ];
-
-        if (waterRows && waterRows.length > 0) {
-          waterRows.forEach(row => {
-            const ist = formatIST(row.timestamp);
-            const flow = row.flow_rate !== null && row.flow_rate !== undefined ? Number(row.flow_rate) : 0;
-            const current = row.current !== null && row.current !== undefined ? Number(row.current) : 0;
-            const pumpStatus = (flow > 1.0 || current > 5.0) ? 'RUNNING' : 'STANDBY';
-
-            let wStatus = row.water_status;
-            if (!wStatus) {
-              const ph = row.ph !== null ? Number(row.ph) : 0;
-              const tds = row.tds !== null ? Number(row.tds) : 0;
-              if (ph === 0 && tds === 0) wStatus = '--';
-              else if (ph >= 6.5 && ph <= 8.5 && tds < 500) wStatus = 'Safe';
-              else if (ph < 6.5 || ph > 8.5) wStatus = 'Warning';
-              else wStatus = 'Critical';
-            }
-
-            waterSheet.addRow({
-              date: ist.date,
-              time: ist.time,
-              id: row.borewell_id || 'BW-01',
-              pump_status: pumpStatus,
-              flow_rate: row.flow_rate !== null && row.flow_rate !== undefined ? Number(Number(row.flow_rate).toFixed(1)) : '',
-              daily_liters: row.daily_liters !== null && row.daily_liters !== undefined ? Number(Number(row.daily_liters).toFixed(1)) : '0.0',
-              total_liters: row.total_liters !== null && row.total_liters !== undefined ? Number(Number(row.total_liters).toFixed(1)) : '0.0',
-              current: row.current !== null && row.current !== undefined ? Number(Number(row.current).toFixed(2)) : '',
-              voltage: row.voltage !== null && row.voltage !== undefined ? Number(Number(row.voltage).toFixed(1)) : '',
-              efficiency: row.efficiency !== null && row.efficiency !== undefined ? Number(Number(row.efficiency).toFixed(0)) : '',
-              water_level: row.water_level !== null && row.water_level !== undefined ? Number(Number(row.water_level).toFixed(2)) : '',
-              ph: row.ph !== null && row.ph !== undefined ? Number(Number(row.ph).toFixed(1)) : '',
-              tds: row.tds !== null && row.tds !== undefined ? Number(Number(row.tds).toFixed(0)) : '',
-              water_status: wStatus,
-              turbidity: row.turbidity !== null && row.turbidity !== undefined ? Number(Number(row.turbidity).toFixed(0)) : ''
-            });
-          });
-        }
-
-        // 2. Air Quality Sheet (Direct table starting at Row 1, Row 1 pinned)
-        const aqiSheet = workbook.addWorksheet('Air Quality', {
-          views: [{ state: 'frozen', ySplit: 1 }]
-        });
-
-        aqiSheet.columns = [
-          { header: 'Date', key: 'date', width: 14 },
-          { header: 'Time (IST)', key: 'time', width: 16 },
-          { header: 'Device ID', key: 'id', width: 16 },
-          { header: 'AQI', key: 'aqi', width: 12 },
-          { header: 'Air Quality Category', key: 'aqi_category', width: 22 },
-          { header: 'PM2.5 (ug/m3)', key: 'pm25', width: 16 },
-          { header: 'PM10 (ug/m3)', key: 'pm10', width: 16 },
-          { header: 'CO2 (ppm)', key: 'co2', width: 14 },
-          { header: 'Temperature (°C)', key: 'temp', width: 18 },
-          { header: 'Humidity (%)', key: 'humidity', width: 15 },
-          { header: 'TVOC (ppm)', key: 'tvoc', width: 14 },
-          { header: 'HCHO (ppm)', key: 'hcho', width: 14 }
-        ];
-
-        if (aqiRows && aqiRows.length > 0) {
-          aqiRows.forEach(row => {
-            const ist = formatIST(row.timestamp);
-            const aqiVal = row.aqi !== null && row.aqi !== undefined ? Number(row.aqi) : null;
-            const category = getAqiCategory(aqiVal);
-
-            aqiSheet.addRow({
-              date: ist.date,
-              time: ist.time,
-              id: 'AQI-NODE-01',
-              aqi: aqiVal !== null ? Math.round(aqiVal) : '',
-              aqi_category: category,
-              pm25: row.pm25 !== null && row.pm25 !== undefined ? Number(Number(row.pm25).toFixed(1)) : '',
-              pm10: row.pm10 !== null && row.pm10 !== undefined ? Number(Number(row.pm10).toFixed(1)) : '',
-              co2: row.co2 !== null && row.co2 !== undefined ? Number(Number(row.co2).toFixed(0)) : '',
-              temp: row.temp !== null && row.temp !== undefined ? Number(Number(row.temp).toFixed(1)) : '',
-              humidity: row.humidity !== null && row.humidity !== undefined ? Number(Number(row.humidity).toFixed(1)) : '',
-              tvoc: row.tvoc !== null && row.tvoc !== undefined ? Number(Number(row.tvoc).toFixed(3)) : '',
-              hcho: row.hcho !== null && row.hcho !== undefined ? Number(Number(row.hcho).toFixed(3)) : ''
-            });
-          });
-        }
-
-        // Apply clean standard Excel styling to header row (Row 1)
-        [waterSheet, aqiSheet].forEach(sheet => {
-          const headerRow = sheet.getRow(1);
-          headerRow.font = { bold: true, name: 'Calibri', size: 11 };
-          headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-          headerRow.height = 24;
-        });
-
-        const todayIstStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
-        const filename = `report_${todayIstStr}.xlsx`;
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        await workbook.xlsx.write(res);
-        res.end();
-      } catch (excelErr) {
-        console.error('❌ Excel export error:', excelErr.message);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Failed to generate Excel report.', detail: excelErr.message });
-        }
-      }
+  try {
+    const fetchWater = new Promise((resolve, reject) => {
+      db.all(
+        'SELECT timestamp, borewell_id, flow_rate, daily_liters, total_liters, current, voltage, efficiency, water_level, ph, tds, water_status, turbidity FROM readings_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?',
+        [req.tenantId, safeLimit],
+        (err, rows) => (err ? reject(err) : resolve(rows || []))
+      );
     });
-  });
+
+    const fetchAqi = new Promise((resolve, reject) => {
+      db.all(
+        'SELECT timestamp, pm25, pm10, co2, tvoc, hcho, temp, humidity, aqi FROM aqi_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?',
+        [req.tenantId, safeLimit],
+        (err, rows) => (err ? reject(err) : resolve(rows || []))
+      );
+    });
+
+    const [waterRows, aqiRows] = await Promise.all([fetchWater, fetchAqi]);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Planet Insights';
+    workbook.created = new Date();
+
+    // 1. Water & Borewell Sheet (Direct table starting at Row 1, Row 1 pinned)
+    const waterSheet = workbook.addWorksheet('Water & Borewell', {
+      views: [{ state: 'frozen', ySplit: 1 }]
+    });
+
+    waterSheet.columns = [
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Time (IST)', key: 'time', width: 16 },
+      { header: 'Source ID', key: 'id', width: 14 },
+      { header: 'Pump Status', key: 'pump_status', width: 16 },
+      { header: 'Flow Rate (L/min)', key: 'flow_rate', width: 18 },
+      { header: "Today's Volume (Liters)", key: 'daily_liters', width: 24 },
+      { header: 'Total Volume (Liters)', key: 'total_liters', width: 22 },
+      { header: 'Current (A)', key: 'current', width: 14 },
+      { header: 'Voltage (V)', key: 'voltage', width: 14 },
+      { header: 'Efficiency (%)', key: 'efficiency', width: 15 },
+      { header: 'Water Level (m)', key: 'water_level', width: 16 },
+      { header: 'pH', key: 'ph', width: 12 },
+      { header: 'TDS (ppm)', key: 'tds', width: 14 },
+      { header: 'Water Quality Status', key: 'water_status', width: 22 },
+      { header: 'Turbidity (NTU)', key: 'turbidity', width: 16 }
+    ];
+
+    if (waterRows && waterRows.length > 0) {
+      waterRows.forEach(row => {
+        const ist = formatIST(row.timestamp);
+        const flow = row.flow_rate !== null && row.flow_rate !== undefined ? Number(row.flow_rate) : 0;
+        const current = row.current !== null && row.current !== undefined ? Number(row.current) : 0;
+        const pumpStatus = (flow > 1.0 || current > 5.0) ? 'RUNNING' : 'STANDBY';
+
+        let wStatus = row.water_status;
+        if (!wStatus) {
+          const ph = row.ph !== null ? Number(row.ph) : 0;
+          const tds = row.tds !== null ? Number(row.tds) : 0;
+          if (ph === 0 && tds === 0) wStatus = '--';
+          else if (ph >= 6.5 && ph <= 8.5 && tds < 500) wStatus = 'Safe';
+          else if (ph < 6.5 || ph > 8.5) wStatus = 'Warning';
+          else wStatus = 'Critical';
+        }
+
+        waterSheet.addRow({
+          date: ist.date,
+          time: ist.time,
+          id: row.borewell_id || 'BW-01',
+          pump_status: pumpStatus,
+          flow_rate: row.flow_rate !== null && row.flow_rate !== undefined ? Number(Number(row.flow_rate).toFixed(1)) : '',
+          daily_liters: row.daily_liters !== null && row.daily_liters !== undefined ? Number(Number(row.daily_liters).toFixed(1)) : '0.0',
+          total_liters: row.total_liters !== null && row.total_liters !== undefined ? Number(Number(row.total_liters).toFixed(1)) : '0.0',
+          current: row.current !== null && row.current !== undefined ? Number(Number(row.current).toFixed(2)) : '',
+          voltage: row.voltage !== null && row.voltage !== undefined ? Number(Number(row.voltage).toFixed(1)) : '',
+          efficiency: row.efficiency !== null && row.efficiency !== undefined ? Number(Number(row.efficiency).toFixed(0)) : '',
+          water_level: row.water_level !== null && row.water_level !== undefined ? Number(Number(row.water_level).toFixed(2)) : '',
+          ph: row.ph !== null && row.ph !== undefined ? Number(Number(row.ph).toFixed(1)) : '',
+          tds: row.tds !== null && row.tds !== undefined ? Number(Number(row.tds).toFixed(0)) : '',
+          water_status: wStatus,
+          turbidity: row.turbidity !== null && row.turbidity !== undefined ? Number(Number(row.turbidity).toFixed(0)) : ''
+        });
+      });
+    }
+
+    // 2. Air Quality Sheet (Direct table starting at Row 1, Row 1 pinned)
+    const aqiSheet = workbook.addWorksheet('Air Quality', {
+      views: [{ state: 'frozen', ySplit: 1 }]
+    });
+
+    aqiSheet.columns = [
+      { header: 'Date', key: 'date', width: 14 },
+      { header: 'Time (IST)', key: 'time', width: 16 },
+      { header: 'Device ID', key: 'id', width: 16 },
+      { header: 'AQI', key: 'aqi', width: 12 },
+      { header: 'Air Quality Category', key: 'aqi_category', width: 22 },
+      { header: 'PM2.5 (ug/m3)', key: 'pm25', width: 16 },
+      { header: 'PM10 (ug/m3)', key: 'pm10', width: 16 },
+      { header: 'CO2 (ppm)', key: 'co2', width: 14 },
+      { header: 'Temperature (°C)', key: 'temp', width: 18 },
+      { header: 'Humidity (%)', key: 'humidity', width: 15 },
+      { header: 'TVOC (ppm)', key: 'tvoc', width: 14 },
+      { header: 'HCHO (ppm)', key: 'hcho', width: 14 }
+    ];
+
+    if (aqiRows && aqiRows.length > 0) {
+      aqiRows.forEach(row => {
+        const ist = formatIST(row.timestamp);
+        const aqiVal = row.aqi !== null && row.aqi !== undefined ? Number(row.aqi) : null;
+        const category = getAqiCategory(aqiVal);
+
+        aqiSheet.addRow({
+          date: ist.date,
+          time: ist.time,
+          id: 'AQI-NODE-01',
+          aqi: aqiVal !== null ? Math.round(aqiVal) : '',
+          aqi_category: category,
+          pm25: row.pm25 !== null && row.pm25 !== undefined ? Number(Number(row.pm25).toFixed(1)) : '',
+          pm10: row.pm10 !== null && row.pm10 !== undefined ? Number(Number(row.pm10).toFixed(1)) : '',
+          co2: row.co2 !== null && row.co2 !== undefined ? Number(Number(row.co2).toFixed(0)) : '',
+          temp: row.temp !== null && row.temp !== undefined ? Number(Number(row.temp).toFixed(1)) : '',
+          humidity: row.humidity !== null && row.humidity !== undefined ? Number(Number(row.humidity).toFixed(1)) : '',
+          tvoc: row.tvoc !== null && row.tvoc !== undefined ? Number(Number(row.tvoc).toFixed(3)) : '',
+          hcho: row.hcho !== null && row.hcho !== undefined ? Number(Number(row.hcho).toFixed(3)) : ''
+        });
+      });
+    }
+
+    // Apply clean standard Excel styling to header row (Row 1)
+    [waterSheet, aqiSheet].forEach(sheet => {
+      const headerRow = sheet.getRow(1);
+      headerRow.font = { bold: true, name: 'Calibri', size: 11 };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRow.height = 24;
+    });
+
+    const todayIstStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+    const filename = `report_${todayIstStr}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (excelErr) {
+    console.error('❌ Excel export error:', excelErr.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate Excel report.', detail: excelErr.message });
+    }
+  }
 });
 
 // CSV Export Endpoint - Merges Water and Air historical readings — scoped to active tenant
-app.get('/api/export/csv', requireDashboardAuth, (req, res) => {
+app.get('/api/export/csv', requireDashboardAuth, async (req, res) => {
   // SECURITY FIX (M-02): Cap export queries to prevent OOM on large datasets
-  const exportLimit = parseInt(req.query.limit, 10) || 10000;
-  const safeCsvLimit = Math.min(exportLimit, 50000);
-  db.all('SELECT * FROM readings_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, safeCsvLimit], (err, waterRows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const exportLimit = parseInt(req.query.limit, 10) || 1000;
+  const safeCsvLimit = Math.min(exportLimit, 2500);
 
-    db.all('SELECT * FROM aqi_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?', [req.tenantId, safeCsvLimit], (err, aqiRows) => {
-      if (err) return res.status(500).json({ error: err.message });
+  try {
+    const fetchWater = new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM readings_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?',
+        [req.tenantId, safeCsvLimit],
+        (err, rows) => (err ? reject(err) : resolve(rows || []))
+      );
+    });
+
+    const fetchAqi = new Promise((resolve, reject) => {
+      db.all(
+        'SELECT * FROM aqi_history WHERE tenant_id = ? ORDER BY timestamp DESC LIMIT ?',
+        [req.tenantId, safeCsvLimit],
+        (err, rows) => (err ? reject(err) : resolve(rows || []))
+      );
+    });
+
+    const [waterRows, aqiRows] = await Promise.all([fetchWater, fetchAqi]);
 
       const combined = [];
 
@@ -476,9 +501,14 @@ app.get('/api/export/csv', requireDashboardAuth, (req, res) => {
 
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename=environmental_readings.csv');
+      res.setHeader('Cache-Control', 'no-cache');
       res.status(200).send(csvContent);
-    });
-  });
+  } catch (csvErr) {
+    console.error('❌ CSV export error:', csvErr.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to generate CSV export.', detail: csvErr.message });
+    }
+  }
 });
 
 // 3. Control Toggle (UI -> Backend -> LoRa) — scoped to active tenant

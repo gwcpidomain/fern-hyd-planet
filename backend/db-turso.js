@@ -228,9 +228,18 @@ async function initSchema(client) {
     )`,
     `CREATE INDEX IF NOT EXISTS idx_readings_tenant_borewell_time
           ON readings_history(tenant_id, borewell_id, timestamp DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_readings_tenant_time
+          ON readings_history(tenant_id, timestamp DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_aqi_tenant_time
           ON aqi_history(tenant_id, timestamp DESC)`
   ], 'write');
+
+  // Migration: ensure time-series index exists on existing Turso DBs
+  try {
+    await client.execute("CREATE INDEX IF NOT EXISTS idx_readings_tenant_time ON readings_history(tenant_id, timestamp DESC)");
+  } catch (e) {
+    // Column/index already exists, ignore
+  }
 
   // Migration: ensure site_password_hash column exists on existing Turso DBs
   try {
