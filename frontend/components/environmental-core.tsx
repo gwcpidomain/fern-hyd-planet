@@ -107,57 +107,40 @@ export function SpeedometerGauge({
   pumpStatus?: string
   isMotorOn?: boolean
 }) {
-  const maxAmps = 15;
+  // PHASE 3 FIX: Calibrate maxAmps to 25A for 3-phase commercial motors (14-15A normal operating range)
+  const maxAmps = 25;
 
-  // ── PHASE 1 FIX: Link Pump Monitor state to Aquifer Monitor master state ──
-  // If motor is confirmed OFF or water sensor is offline, force 0.0 A and STANDBY.
-  // This eliminates the contradiction where Aquifer shows "MOTOR OFF" but gauge shows active amps.
+  // Link Pump Monitor state to Aquifer Monitor master state:
+  // If motor is confirmed OFF or in standby, force 0.0 A and STANDBY.
   const safeIrms = isMotorOn
     ? (Number.isFinite(Number(irms)) ? Number(irms) : 0)
     : 0.0;
 
-  // 4 color-coded zones: Left→Right = CHARGING → LOW → MID → HIGH based on Amps
+  // 4 color-coded zones calibrated for 0-25A:
+  // CHARGING (0 - 5A) -> LOW (5 - 11A) -> MID (11 - 19A, nominal 14-15A) -> HIGH (19 - 25A)
   const zones = [
-    { label: "CHARGING", from: 0, to: 0.25, color: "#d91536e8" },   // Vibrant Red (Off/dry run)
-    { label: "LOW", from: 0.25, to: 0.5, color: "#f3f627f8" },      // Warm Yellow
-    { label: "MID", from: 0.5, to: 0.75, color: "#377deeff" },      // Bright Blue (Normal operation)
-    { label: "HIGH", from: 0.75, to: 1, color: "#22c55eff" },       // Vivid Green
+    { label: "CHARGING", from: 0.0, to: 0.20, color: "#d91536e8" },   // Red (0-5A: standby/charging)
+    { label: "LOW", from: 0.20, to: 0.44, color: "#f3f627f8" },      // Yellow (5-11A: light load/priming)
+    { label: "MID", from: 0.44, to: 0.76, color: "#377deeff" },      // Blue (11-19A: Fern nominal 14-15A normal pumping)
+    { label: "HIGH", from: 0.76, to: 1.0, color: "#22c55eff" },       // Green (19-25A: heavy hydraulic lift)
   ];
 
-  // Map status string → ratio (center of the zone)
-  const statusToRatio: Record<string, number> = {
-    "OFF": 0.0,
-    "STANDBY": 0.0,
-    "CHARGING": 0.125,
-    "CRITICAL": 0.30,
-    "LOW": 0.375,
-    "MID": 0.625,
-    "HIGH": 0.875,
-  };
-
-  // If motor is OFF: needle rests at 0.0 (far left), status is STANDBY.
-  // If motor is ON but amps are below threshold (flow confirmed), override to LOW so gauge is not stuck at CHARGING.
-  const resolvedPumpStatus = !isMotorOn
-    ? 'STANDBY'
-    : (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
-      ? 'LOW'
-      : (pumpStatus || status || 'CHARGING');
-
-  const activeStatusStr = resolvedPumpStatus.toUpperCase();
-
-  // Ratio = 0.0 when motor is OFF → needle rests at 180° (leftmost resting position)
+  // PHASE 3 FIX: Smooth continuous needle deflection based on actual Amperes (replaces rigid discrete status snapping)
   const ratio = !isMotorOn
     ? 0.0
-    : (statusToRatio[activeStatusStr] ?? (safeIrms / maxAmps));
+    : Math.min(1.0, Math.max(0.0, safeIrms / maxAmps));
 
-  const activeZone = zones.find(z => ratio >= z.from && ratio < z.to) || zones[0];
+  // Determine active zone from smooth ratio
+  const activeZone = !isMotorOn
+    ? { label: "STANDBY", color: "#64748b" }
+    : (zones.find(z => ratio >= z.from && ratio < z.to) || zones[zones.length - 1]);
 
-  // Display label: STANDBY when motor is off, ON when motor on but status overridden, else raw status
+  // Display label: STANDBY when off, else zone label (avoids false CRITICAL alarms during active pumping)
   const activeStatus = !isMotorOn
     ? 'STANDBY'
-    : (isMotorOn && (pumpStatus === 'OFF' || pumpStatus === 'N/A' || !pumpStatus))
-      ? 'ON'
-      : activeStatusStr;
+    : (pumpStatus && !['OFF', 'STANDBY', 'N/A', 'CRITICAL'].includes(pumpStatus.toUpperCase()))
+      ? pumpStatus.toUpperCase()
+      : activeZone.label;
 
   // Needle angle: semi-circle from 180° (left/resting) to 0° (right/max)
   const needleAngle = 180 - (ratio * 180);
@@ -220,14 +203,14 @@ export function SpeedometerGauge({
               stroke={z.color}
               strokeWidth="32"
               strokeLinecap="butt"
-              opacity={activeStatus === z.label ? 1 : 0.4}
-              filter={activeStatus === z.label ? `url(#glow-${z.label})` : undefined}
+              opacity={isMotorOn && activeStatus === z.label ? 1 : 0.35}
+              filter={isMotorOn && activeStatus === z.label ? `url(#glow-${z.label})` : undefined}
               style={{ transition: "all 0.4s ease" }}
             />
           ))}
 
-          {/* Zone separators — transparent so colored arcs flow seamlessly */}
-          {[0.25, 0.5, 0.75].map((tick) => {
+          {/* Zone separators — calibrated for 0-25A boundaries */}
+          {[0.20, 0.44, 0.76].map((tick) => {
             const angle = Math.PI - (tick * Math.PI);
             const x1 = cx + (r - 20) * Math.cos(angle);
             const y1 = cy - (r - 20) * Math.sin(angle);
@@ -238,13 +221,14 @@ export function SpeedometerGauge({
             );
           })}
 
-          {/* Needle */}
+          {/* Needle with smooth transition */}
           <line
             x1={cx} y1={cy}
             x2={nx} y2={ny}
             stroke="#f8fafc"
             strokeWidth="6"
             strokeLinecap="round"
+            style={{ transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)" }}
           />
 
           {/* Center hub */}
