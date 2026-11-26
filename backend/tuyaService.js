@@ -38,10 +38,11 @@ function calculateCpcbSubIndex(conc, pollutant) {
   };
 
   const bp = breakpoints[pollutant];
-  if (!bp) return 0;
-  const range = bp.find(b => conc >= b.cL && conc <= b.cH);
-  if (!range) return conc > bp[bp.length - 1].cH ? 500 : 0;
-  return Math.round(((range.iH - range.iL) / (range.cH - range.cL)) * (conc - range.cL) + range.iL);
+  if (!bp || conc === null || conc === undefined || Number.isNaN(Number(conc)) || conc < 0) return 0;
+  const val = Math.round(Number(conc));
+  const range = bp.find(b => val >= b.cL && val <= b.cH);
+  if (!range) return val > bp[bp.length - 1].cH ? 500 : 0;
+  return Math.round(((range.iH - range.iL) / (range.cH - range.cL)) * (val - range.cL) + range.iL);
 }
 
 function getCategory(aqi) {
@@ -64,6 +65,11 @@ function parseTuyaStatus(statusArray) {
   const map = {};
   for (const { code, value } of statusArray) {
     map[code] = value;
+  }
+
+  // Guard against missing particulate telemetry so offline/partial responses don't log fake AQI=0
+  if (typeof map['pm25_value'] !== 'number' && typeof map['pm10'] !== 'number') {
+    return null;
   }
 
   const pm25     = typeof map['pm25_value']     === 'number' ? map['pm25_value']           : 0;
@@ -156,8 +162,17 @@ function startTuyaPoller(db, broadcast) {
             console.error(`❌ Tuya[${s.tenantId}]: Unexpected response shape:`, JSON.stringify(response.result));
             return;
           }
+          if (deviceResult.online === false) {
+            console.warn(`⚠️  Tuya[${s.tenantId}]: Device is offline — skipping AQI insert.`);
+            return;
+          }
 
-          const { pm25, pm10, pm1, co2, tvoc, hcho, temp, humidity, aqi } = parseTuyaStatus(deviceResult.status);
+          const parsed = parseTuyaStatus(deviceResult.status);
+          if (!parsed) {
+            console.warn(`⚠️  Tuya[${s.tenantId}]: Missing pm25/pm10 in status — skipping AQI insert.`);
+            return;
+          }
+          const { pm25, pm10, pm1, co2, tvoc, hcho, temp, humidity, aqi } = parsed;
           const category = getCategory(aqi);
           const dominant = calculateCpcbSubIndex(pm25, 'pm25') >= calculateCpcbSubIndex(pm10, 'pm10') ? 'pm25' : 'pm10';
 

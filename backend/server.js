@@ -138,6 +138,7 @@ app.get('/api/borewells', requireDashboardAuth, (req, res) => {
       if (r.is_motor_on === 0 || !r.is_motor_on) {
         return {
           ...r,
+          flow_rate: 0.0,
           current: 0.0,
           efficiency: 0.0,
           current_status: (r.current_status && !['ON', 'RUNNING', 'HIGH', 'LOW', 'MID'].includes(r.current_status.toUpperCase())) ? r.current_status : 'OFF',
@@ -511,45 +512,19 @@ app.get('/api/export/csv', requireDashboardAuth, async (req, res) => {
   }
 });
 
-// 3. Control Toggle (UI -> Backend -> LoRa) — scoped to active tenant
-app.post('/api/control', requireDashboardAuth, validateControlPayload, (req, res) => {
-  const { id, command } = req.body;
-  console.log(`🔌 Command to Borewell ${id} (tenant=${req.tenantId}): ${command}`);
-
-  const state = command === 'ON' ? 1 : 0;
-  const nowIso = new Date().toISOString();
-  const sql = state === 1
-    ? "UPDATE borewell_state SET is_motor_on = 1, motor_started_at = COALESCE(motor_started_at, ?), last_updated = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?"
-    : "UPDATE borewell_state SET is_motor_on = 0, motor_started_at = NULL, last_updated = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?";
-  const params = state === 1
-    ? [nowIso, id, req.tenantId]
-    : [id, req.tenantId];
-
-  db.run(sql, params, (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    // Broadcast status update to connected clients of this tenant
-    broadcast({
-      type: 'control_update',
-      id: id,
-      tenant_id: req.tenantId,
-      is_motor_on: state === 1,
-      motor_started_at: state === 1 ? nowIso : null
-    });
-
-    if (state === 0) {
-      motorHoldDownMap.delete(`${req.tenantId}:${id}`);
-    } else {
-      motorHoldDownMap.set(`${req.tenantId}:${id}`, { lastActiveTime: Date.now(), lastFlow: 10.0, lastAmps: 6.5 });
-    }
-
-    res.json({ status: 'Command Sent', id, state: command, motor_started_at: state === 1 ? nowIso : null });
-  });
-});
-
 // Motor hold-down tracker: prevents pump from flickering to STANDBY during momentary flow gaps between pulse meter readings
 const motorHoldDownMap = new Map(); // key: `${tenantId}:${id}` -> { lastActiveTime: number, lastFlow: number, lastAmps: number }
 const MOTOR_HOLD_DOWN_MS = 45000; // 45 seconds hold-down grace period
+
+// Normalize SQLite ("YYYY-MM-DD HH:MM:SS") and ISO-8601 ("...Z") timestamps to UTC epoch ms
+function parseUtcMs(ts) {
+  if (!ts || typeof ts !== 'string') return NaN;
+  const trimmed = ts.trim();
+  if (trimmed.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(trimmed)) {
+    return new Date(trimmed).getTime();
+  }
+  return new Date(trimmed.replace(' ', 'T') + 'Z').getTime();
+}
 
 // Helper: core water ingestion logic — shared by /api/push/:tenantId and legacy /api/push
 function handleWaterPush(tenantId, payload, res) {
@@ -592,7 +567,20 @@ function handleWaterPush(tenantId, payload, res) {
       // 1. Determine Motor Status (is_motor_on) & Apply Hold-Down Grace Period
       const borewellKey = `${tenantId}:${id}`;
       const nowMs = Date.now();
-      const holdState = motorHoldDownMap.get(borewellKey) || { lastActiveTime: 0, lastFlow: 0.0, lastAmps: 0.0 };
+      let holdState = motorHoldDownMap.get(borewellKey);
+      if (!holdState) {
+        const lastDbMs = parseUtcMs(current_state.last_updated);
+        if (current_state.is_motor_on === 1 && !Number.isNaN(lastDbMs) && (nowMs - lastDbMs) < MOTOR_HOLD_DOWN_MS) {
+          holdState = {
+            lastActiveTime: lastDbMs,
+            lastFlow: Number(current_state.flow_rate || 0),
+            lastAmps: Number(current_state.current || 0),
+          };
+          motorHoldDownMap.set(borewellKey, holdState);
+        } else {
+          holdState = { lastActiveTime: 0, lastFlow: 0.0, lastAmps: 0.0 };
+        }
+      }
 
       // Auto-normalize current if hardware is sending 10x scaled amperes (e.g. Fern ~64A -> ~6.4A)
       // Standard borewell motors draw 4-14A; 64A is a 10x hardware multiplier from the CT sensor
@@ -728,17 +716,18 @@ function handleWaterPush(tenantId, payload, res) {
       }
       wl = parseFloat(Number(wl).toFixed(2));
 
-      // 6. Derive Run Time (rt)
+      // 6. Derive Run Time (rt) — guard against hardware reboot counter resets and network gaps
       let rt = payload.rt !== undefined ? safeFloat(payload.rt) : null;
-      if (rt === null) {
-        let last_rt = current_state.run_time_total !== undefined ? current_state.run_time_total : 0.0;
+      const last_rt = current_state.run_time_total !== undefined ? Number(current_state.run_time_total) : 0.0;
+      if (rt === null || rt < last_rt - 0.01) {
         if (is_motor_on === 1) {
           let deltaHours = 1.0 / 3600.0;
-          if (current_state.last_updated) {
-            const lastTime = new Date(current_state.last_updated + " UTC").getTime();
+          const lastTime = parseUtcMs(current_state.last_updated);
+          if (!Number.isNaN(lastTime) && current_state.is_motor_on === 1) {
             const deltaMs = Date.now() - lastTime;
-            if (deltaMs > 0 && deltaMs < 300000) {
-              deltaHours = deltaMs / (1000.0 * 3600.0);
+            if (deltaMs > 0) {
+              // Cap single-gap credit at 30 minutes to avoid over-crediting after long outages
+              deltaHours = Math.min(deltaMs, 1800000) / (1000.0 * 3600.0);
             }
           }
           rt = last_rt + deltaHours;
@@ -759,8 +748,8 @@ function handleWaterPush(tenantId, payload, res) {
         let last_liters = current_state.total_liters !== undefined ? current_state.total_liters : 0.0;
         if (is_motor_on === 1 && effectiveFlow > 0) {
           let deltaSec = 3.0; // default packet interval
-          if (current_state.last_updated) {
-            const lastTime = new Date(current_state.last_updated + " UTC").getTime();
+          const lastTime = parseUtcMs(current_state.last_updated);
+          if (!Number.isNaN(lastTime)) {
             const deltaMs = Date.now() - lastTime;
             if (deltaMs > 0 && deltaMs < 60000) {
               deltaSec = deltaMs / 1000.0;
@@ -915,11 +904,12 @@ function calculateCpcbSubIndex(conc, pollutant) {
   };
 
   const bp = breakpoints[pollutant];
-  if (!bp) return 0;
-  const range = bp.find(b => conc >= b.cL && conc <= b.cH);
-  if (!range) return conc > bp[bp.length - 1].cH ? 500 : 0;
+  if (!bp || conc === null || conc === undefined || Number.isNaN(Number(conc)) || conc < 0) return 0;
+  const val = Math.round(Number(conc));
+  const range = bp.find(b => val >= b.cL && val <= b.cH);
+  if (!range) return val > bp[bp.length - 1].cH ? 500 : 0;
 
-  return Math.round(((range.iH - range.iL) / (range.cH - range.cL)) * (conc - range.cL) + range.iL);
+  return Math.round(((range.iH - range.iL) / (range.cH - range.cL)) * (val - range.cL) + range.iL);
 }
 
 // AQI Field-Name Normalizer
@@ -1108,9 +1098,8 @@ app.post('/api/auth/login', loginRateLimiter, (req, res) => {
     // Step 2: Check site-level password (per-tenant access gate managed by us)
     db.get('SELECT site_password_hash FROM tenants WHERE id = ?', [tenantId], (tenantErr, tenant) => {
       if (tenantErr) {
-        console.error('Tenant lookup error during login (bypassing site password gate):', tenantErr.message || tenantErr);
-        const token = generateToken(user.id, user.email, user.tenant_id);
-        return res.json({ access_token: token });
+        console.error('Tenant lookup error during login (failing closed):', tenantErr.message || tenantErr);
+        return res.status(503).json({ detail: "Authentication service temporarily unavailable. Please try again." });
       }
 
       if (tenant && tenant.site_password_hash) {

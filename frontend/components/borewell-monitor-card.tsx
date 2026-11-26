@@ -3,7 +3,6 @@ import { Activity, Droplets, Zap, AlertTriangle, ArrowUpRight, TrendingDown, Clo
 
 interface BorewellMonitorProps {
   isMotorOn?: boolean
-  onMotorToggle?: () => void
   activeBorewellIndex: number
   onBorewellChange: (index: number) => void
   // PHASE 3: Optional borewells list; hides tabs when only 1 borewell installed
@@ -21,7 +20,6 @@ interface BorewellMonitorProps {
 
 export function BorewellMonitorCard({ 
   isMotorOn = true, 
-  onMotorToggle, 
   data,
   activeBorewellIndex,
   onBorewellChange,

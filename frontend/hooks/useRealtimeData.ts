@@ -36,7 +36,7 @@ export function useRealtimeData(locationId: string, token: string | null, tenant
         let reconnectAttempts = 0;
 
         const connect = () => {
-            console.log(`🔌 Connecting to WS: ${wsUrl}`);
+            console.log(`🔌 Connecting to WS: ${wsUrl.split('?')[0]}`);
             const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
 

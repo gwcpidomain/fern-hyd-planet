@@ -696,13 +696,6 @@ export function PrivateDashboard() {
                     }
                 };
             });
-        } else if (wsData && (wsData.type as string) === 'control_update') {
-            const incomingId = (wsData as any).id;
-            const isMotorOn = (wsData as any).is_motor_on;
-            const motorStartedAt = (wsData as any).motor_started_at || (isMotorOn ? new Date().toISOString() : null);
-            setBorewells(prev => prev.map(bw =>
-                bw.id === incomingId ? { ...bw, isMotorOn, motorStartedAt } : bw
-            ));
         }
     }, [wsData, demoMode, activeBorewellIndex, borewells]);
 
@@ -860,42 +853,6 @@ export function PrivateDashboard() {
         return () => clearInterval(interval);
     }, [demoMode, currentLocation, isSystemOnline, isMotorOn]);
 
-    const handleMotorToggle = (index: number) => {
-        const borewellId = borewells[index]?.id;
-        if (!borewellId) return;
-        const currentStatus = borewells[index]?.isMotorOn ? 'OFF' : 'ON';
-
-        // Update UI immediately (Optimistic)
-        const willBeOn = !borewells[index]?.isMotorOn;
-        setBorewells(prev => prev.map((bw, i) =>
-            i === index ? {
-                ...bw,
-                isMotorOn: willBeOn,
-                motorStartedAt: willBeOn ? new Date().toISOString() : null
-            } : bw
-        ));
-
-        // Sync with Real Backend if not in demo
-        if (!demoMode) {
-            apiClient("/api/control", {
-                method: 'POST',
-                token,
-                body: JSON.stringify({ id: borewellId, command: currentStatus })
-            }).catch(err => {
-                console.error("Control Sync Failed:", err);
-                toast.error(`Pump command failed. Reverting motor state.`);
-                // Rollback state
-                setBorewells(prev => prev.map((bw, i) =>
-                    i === index ? {
-                        ...bw,
-                        isMotorOn: !willBeOn,
-                        motorStartedAt: !willBeOn ? new Date().toISOString() : null
-                    } : bw
-                ));
-            });
-        }
-    };
-
     // --- REAL BACKEND INITIAL SYNC ---
     useEffect(() => {
         if (demoMode) return;
@@ -942,6 +899,7 @@ export function PrivateDashboard() {
                             turbidity: isDbZero ? (prev?.turbidity ?? 1.2) : (active.turbidity || prev?.turbidity || 1.2),
                             pump_status: isMotorActive ? (active.current_status || "MID") : "OFF",
                             totalLiters: active.total_liters ?? prev?.totalLiters,
+                            dailyLiters: active.daily_liters ?? prev?.dailyLiters,
                             currentStatus: isMotorActive ? (active.current_status || "ON") : "OFF",
                             waterStatus: active.water_status,
                             turbidityStatus: active.turbidity_status,
@@ -1308,7 +1266,6 @@ export function PrivateDashboard() {
                                             activeBorewellIndex={activeBorewellIndex}
                                             onBorewellChange={setActiveBorewellIndex}
                                             isMotorOn={isMotorOn}
-                                            onMotorToggle={() => handleMotorToggle(activeBorewellIndex)}
                                             borewells={borewells}
                                             data={{
                                                 flowRate: isMotorOn
