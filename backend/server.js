@@ -774,22 +774,32 @@ function handleWaterPush(tenantId, payload, res) {
       }
       total_liters = parseFloat(Number(total_liters).toFixed(1));
 
-      // PHASE 2 FIX: 24-Hour Midnight (00:00 IST) Daily Volume Reset
+      // PHASE 2 FIX: 24-Hour Midnight (00:00 IST) Daily Volume Reset + Hardware Reboot Resilience
       // Tracks volume extracted today (Asia/Kolkata), resetting to 0.0 at midnight while preserving lifetime total
       const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
       let daily_reset_date = current_state.daily_reset_date || null;
       let baseline_total_liters = (current_state.baseline_total_liters !== undefined && current_state.baseline_total_liters !== null)
-        ? current_state.baseline_total_liters
+        ? Number(current_state.baseline_total_liters)
         : total_liters;
+
+      const prevTotal = Number(current_state.total_liters || 0);
+      const prevDaily = Number(current_state.daily_liters || 0);
+      let daily_liters;
 
       if (daily_reset_date !== todayIST) {
         // Midnight date rollover: capture current lifetime total as start-of-day baseline
         baseline_total_liters = total_liters;
         daily_reset_date = todayIST;
+        daily_liters = 0.0;
+      } else if (total_liters < prevTotal - 1.0 || total_liters < baseline_total_liters) {
+        // Hardware counter reset / power cycle mid-day (e.g. 26021 -> 0):
+        // Rebase baseline_total_liters so today's accumulated volume is preserved and future liters add cleanly
+        baseline_total_liters = parseFloat((total_liters - prevDaily).toFixed(1));
+        daily_liters = prevDaily;
+      } else {
+        daily_liters = Math.max(0.0, total_liters - baseline_total_liters);
       }
-
-      let daily_liters = Math.max(0.0, total_liters - baseline_total_liters);
       daily_liters = parseFloat(Number(daily_liters).toFixed(1));
 
       const water_status = isZeroWaterPayload ? (current_state.water_status || 'PROBE DRY') : (payload.water_status !== undefined ? payload.water_status : (current_state.water_status !== undefined ? current_state.water_status : 'NORMAL'));
